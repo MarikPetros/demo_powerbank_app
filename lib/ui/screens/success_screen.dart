@@ -44,7 +44,7 @@ class SuccessScreen extends StatelessWidget {
                     html.window.open(_appStoreUrl, '_blank');
                   },
                   style: ElevatedButton.styleFrom(
-                    primary: const Color(0xFF28A745), // green
+                    // primary: const Color(0xFF28A745), // green
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
