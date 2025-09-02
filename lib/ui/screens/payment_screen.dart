@@ -1,11 +1,6 @@
 // lib/ui/screens/payment_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_braintree/flutter_braintree.dart';
 
-import '../../blocs/payment/payment_bloc.dart';
-import '../../blocs/payment/payment_event.dart';
-import '../../blocs/payment/payment_state.dart';
 
 class PaymentScreen extends StatelessWidget {
   final String planId;

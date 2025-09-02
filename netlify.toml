@@ -1,0 +1,11 @@
+[build]
+# Netlify will run this instead of directly calling flutter
+command   = "bash scripts/netlify_build.sh"
+publish   = "build/web"
+base      = "."
+
+[context.production.environment]
+# Your existing env vars (example)
+APPLE_PAY_MERCHANT_ID = "merchant.com.marikpetros"
+API_BASE_URL          = "https://api.rent.marikpetros.com"
+# …and so on
