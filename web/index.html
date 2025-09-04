@@ -31,8 +31,39 @@
 
   <title>powerbank_app</title>
   <link rel="manifest" href="manifest.json">
+
+  <script src="https://js.braintreegateway.com/web/3.93.0/js/client.min.js"></script>
+  <script src="https://js.braintreegateway.com/web/3.93.0/js/apple-pay.min.js"></script>
+
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    async function startApplePay(clientToken, callbackName) {
+      const clientInstance = await braintree.client.create({ authorization: clientToken });
+      const applePayInstance = await braintree.applePay.create({ client: clientInstance });
+
+      const paymentRequest = applePayInstance.createPaymentRequest({
+        total: { label: 'Recharge', amount: '4.99' },
+        requiredBillingContactFields: ['postalAddress']
+      });
+
+      const session = new ApplePaySession(3, paymentRequest);
+
+      session.onvalidatemerchant = async (event) => {
+        const validationData = await applePayInstance.performValidation({ validationURL: event.validationURL });
+        session.completeMerchantValidation(validationData);
+      };
+
+      session.onpaymentauthorized = async (event) => {
+        const payload = await applePayInstance.tokenize({ token: event.payment.token });
+        window.flutter_inappwebview.callHandler(callbackName, payload.nonce);
+        session.completePayment(ApplePaySession.STATUS_SUCCESS);
+      };
+
+      session.begin();
+    }
+  </script>
+
 </body>
 </html>
