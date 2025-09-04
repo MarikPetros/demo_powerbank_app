@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:js_util';
-import 'dart:js';
+import 'dart:js' as js;
 import 'bloc/payment_bloc.dart';
 import 'bloc/payment_event.dart';
 import 'services/payment_service.dart';
@@ -19,9 +19,12 @@ class MyApp extends StatelessWidget {
 
   MyApp({super.key}) {
     // Register JS callback
-    setProperty(context['handleApplePayResult'], 'call', allowInterop((nonce) {
-      paymentBloc.add(SubmitApplePay(nonce));
-    }));
+    void registerApplePayCallback(PaymentBloc bloc) {
+      js.context['handleApplePayResult'] = allowInterop((nonce) {
+        bloc.add(SubmitApplePay(nonce));
+      });
+    }
+    registerApplePayCallback(paymentBloc);
   }
 
   @override

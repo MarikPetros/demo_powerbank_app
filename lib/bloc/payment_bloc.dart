@@ -22,7 +22,15 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
     try {
       stationId = event.stationId;
       final auth = await service.generateAppleAccount();
+
+      print('Auth response: $auth');////////////////////
+
       jwt = auth['accessJwt'];
+      if (jwt == null || jwt!.isEmpty) {
+        emit(PaymentError('JWT missing from auth response'));
+        return;
+      }
+
       final token = await service.getClientToken(jwt!);
       emit(PaymentReady(token));
     } catch (e) {
@@ -34,6 +42,11 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
       Emitter<PaymentState> emit) async {
     emit(PaymentLoading());
     try {
+      if (jwt == null || jwt!.isEmpty) {
+        emit(PaymentError('JWT missing during payment submission'));
+        return;
+      }
+
       final methodToken = await service.addPaymentMethod(
         jwt!,
         event.nonce,
