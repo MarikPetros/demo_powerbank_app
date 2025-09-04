@@ -12,7 +12,7 @@ import '../services/payment_service.dart';
 
 class PaymentScreen extends StatelessWidget {
   final String stationId;
-  const PaymentScreen({required this.stationId});
+  const PaymentScreen({super.key, required this.stationId});
 
   @override
   Widget build(BuildContext context) {
