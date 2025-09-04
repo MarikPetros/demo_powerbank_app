@@ -2,7 +2,6 @@
  import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:js/js.dart';
 import 'dart:js' as js;
 
 import '../bloc/payment_bloc.dart';
@@ -16,6 +15,12 @@ class PaymentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (stationId == 'Error has happened') {
+      return Scaffold(
+        body: Center(child: Text('Invalid station ID')),
+      );
+    }
+
     return BlocProvider(
       create: (_) => PaymentBloc(PaymentService())..add(InitPaymentFlow(stationId)),
       child: Scaffold(
@@ -55,7 +60,7 @@ class PaymentScreen extends StatelessWidget {
 
 class ApplePayBottomSheet extends StatelessWidget {
   final String clientToken;
-  const ApplePayBottomSheet({required this.clientToken});
+  const ApplePayBottomSheet({super.key, required this.clientToken});
 
   @override
   Widget build(BuildContext context) {

@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       routes: [
         GoRoute(path: '/', builder: (_, __) => QRScreen()),
         GoRoute(path: '/pay', builder: (_, state) {
-          final stationId = state.uri.queryParameters['stationId'] ?? '';
+          final stationId = state.uri.queryParameters['stationId'] ?? 'RECH082203000350';
           return PaymentScreen(stationId: stationId);
         }),
         GoRoute(path: '/success', builder: (_, __) => SuccessScreen()),

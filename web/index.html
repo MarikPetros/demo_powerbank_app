@@ -1,69 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <meta charset="UTF-8">
+    <title>Power Bank Rental</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <base href="/">
+    <script src="https://js.braintreegateway.com/web/3.91.0/js/client.min.js"></script>
+    <script src="https://js.braintreegateway.com/web/3.91.0/js/apple-pay.min.js"></script>
+    <script>
+        function startApplePay(clientToken, callbackName) {
+          braintree.client.create({ authorization: clientToken }, function (err, clientInstance) {
+            if (err) return console.error(err);
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+            braintree.applePay.create({ client: clientInstance }, function (err, applePayInstance) {
+              if (err) return console.error(err);
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+              const paymentRequest = applePayInstance.createPaymentRequest({
+                total: { label: 'Recharge', amount: '4.99' },
+                requiredBillingContactFields: ['postalAddress']
+              });
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+              const session = new ApplePaySession(3, paymentRequest);
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Power bank rental with Braintree + ApplePay">
+              session.onvalidatemerchant = function (event) {
+                applePayInstance.performValidation({ validationURL: event.validationURL })
+                  .then(data => session.completeMerchantValidation(data));
+              };
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="powerbank_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+              session.onpaymentauthorized = function (event) {
+                applePayInstance.tokenize({ token: event.payment.token })
+                  .then(payload => {
+                    window.handleApplePayResult(payload.nonce);
+                    session.completePayment(ApplePaySession.STATUS_SUCCESS);
+                  });
+              };
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>powerbank_app</title>
-  <link rel="manifest" href="manifest.json">
-
-  <script src="https://js.braintreegateway.com/web/3.93.0/js/client.min.js"></script>
-  <script src="https://js.braintreegateway.com/web/3.93.0/js/apple-pay.min.js"></script>
-
+              session.begin();
+            });
+          });
+        }
+    </script>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
-  <script>
-    async function startApplePay(clientToken, callbackName) {
-      const clientInstance = await braintree.client.create({ authorization: clientToken });
-      const applePayInstance = await braintree.applePay.create({ client: clientInstance });
-
-      const paymentRequest = applePayInstance.createPaymentRequest({
-        total: { label: 'Recharge', amount: '4.99' },
-        requiredBillingContactFields: ['postalAddress']
-      });
-
-      const session = new ApplePaySession(3, paymentRequest);
-
-      session.onvalidatemerchant = async (event) => {
-        const validationData = await applePayInstance.performValidation({ validationURL: event.validationURL });
-        session.completeMerchantValidation(validationData);
-      };
-
-      session.onpaymentauthorized = async (event) => {
-        const payload = await applePayInstance.tokenize({ token: event.payment.token });
-        window.flutter_inappwebview.callHandler(callbackName, payload.nonce);
-        session.completePayment(ApplePaySession.STATUS_SUCCESS);
-      };
-
-      session.begin();
-    }
-  </script>
-
+<script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
