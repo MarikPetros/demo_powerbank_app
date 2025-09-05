@@ -1,10 +1,7 @@
 // lib/services/mock_payment_service.dart
-
-import 'package:dio/dio.dart';
-
 import 'payment_service.dart';
 
-class MockPaymentService implements PaymentService {
+class MockPaymentService extends PaymentService {
   @override
   Future<Map<String, String>> generateAppleAccount() async {
     // simulate network latency
@@ -19,12 +16,10 @@ class MockPaymentService implements PaymentService {
   }
 
   @override
-  Future<String> addPaymentMethod(
-      String jwt,
+  Future<String> addPaymentMethod(String jwt,
       String nonce,
       String name,
-      String type,
-      ) async {
+      String type,) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return 'mock-method-token';
   }
@@ -35,15 +30,9 @@ class MockPaymentService implements PaymentService {
   }
 
   @override
-  Future<void> rentPowerBank(
-      String jwt,
+  Future<void> rentPowerBank(String jwt,
       String stationId,
-      String connectionKey,
-      ) async {
+      String connectionKey,) async {
     await Future.delayed(const Duration(milliseconds: 200));
   }
-
-  @override
-  // TODO: implement dio
-  Dio get dio => throw UnimplementedError();
 }
