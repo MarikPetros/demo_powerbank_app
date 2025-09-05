@@ -15,7 +15,7 @@ class SuccessScreen extends StatelessWidget {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () async {
-                final url = Uri.parse('https://apps.apple.com/app/idYOUR_APP_ID');
+                final url = Uri.parse('https://apps.apple.com/ru/app/recharge-city/id1594160460');
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url);
                 }

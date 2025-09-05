@@ -1,8 +1,10 @@
 // // lib/ui/screens/payment_screen.dart
- import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:js' as js;
+import 'package:powerbank_app/js_bridge/js_bridge.dart';
+import 'package:powerbank_app/utils/platform.dart';
 
 import '../bloc/payment_bloc.dart';
 import '../bloc/payment_event.dart';
@@ -11,23 +13,25 @@ import '../services/payment_service.dart';
 
 class PaymentScreen extends StatelessWidget {
   final String stationId;
+
   const PaymentScreen({super.key, required this.stationId});
 
   @override
   Widget build(BuildContext context) {
     if (stationId == 'Error has happened') {
-      return Scaffold(
-        body: Center(child: Text('Invalid station ID')),
-      );
+      return Scaffold(body: Center(child: Text('Invalid station ID')));
     }
 
     return BlocProvider(
-      create: (_) => PaymentBloc(PaymentService())..add(InitPaymentFlow(stationId)),
+      create: (_) =>
+          PaymentBloc(PaymentService())..add(InitPaymentFlow(stationId)),
       child: Scaffold(
         appBar: AppBar(title: Text('Rent Power Bank')),
         body: BlocBuilder<PaymentBloc, PaymentState>(
           builder: (context, state) {
-            if (state is PaymentLoading) return Center(child: CircularProgressIndicator());
+            if (state is PaymentLoading) {
+              return Center(child: CircularProgressIndicator());
+            }
             if (state is PaymentReady) {
               return Center(
                 child: ElevatedButton.icon(
@@ -38,13 +42,16 @@ class PaymentScreen extends StatelessWidget {
                       context: context,
                       isScrollControlled: true,
                       backgroundColor: Colors.transparent,
-                      builder: (_) => ApplePayBottomSheet(clientToken: state.clientToken),
+                      builder: (_) =>
+                          ApplePayBottomSheet(clientToken: state.clientToken),
                     );
                   },
                 ),
               );
             }
-            if (state is PaymentError) return Center(child: Text('Error: ${state.message}'));
+            if (state is PaymentError) {
+              return Center(child: Text('Error: ${state.message}'));
+            }
             if (state is PaymentSuccess) {
               Future.microtask(() => context.go('/success'));
               return SizedBox.shrink();
@@ -57,9 +64,9 @@ class PaymentScreen extends StatelessWidget {
   }
 }
 
-
 class ApplePayBottomSheet extends StatelessWidget {
   final String clientToken;
+
   const ApplePayBottomSheet({super.key, required this.clientToken});
 
   @override
@@ -76,7 +83,7 @@ class ApplePayBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Image.asset('assets/apple_pay_black.png', height: 24),
+                Image.asset('assets/apple_pay_logo.png', height: 24),
                 Spacer(),
                 IconButton(
                   icon: Icon(Icons.close),
@@ -106,9 +113,18 @@ class ApplePayBottomSheet extends StatelessWidget {
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Apple Card', style: TextStyle(fontSize: 15.13, letterSpacing: 0.76)),
-        Text('10880 Malibu Point Malibu Cal...', style: TextStyle(color: Color(0x3C3C4399), fontSize: 13.11)),
-        Text('•••• 1234', style: TextStyle(color: Color(0x3C3C4399), fontSize: 13.11)),
+        Text(
+          'Apple Card',
+          style: TextStyle(fontSize: 15.13, letterSpacing: 0.76),
+        ),
+        Text(
+          '10880 Malibu Point Malibu Cal...',
+          style: TextStyle(color: Color(0x3C3C4399), fontSize: 13.11),
+        ),
+        Text(
+          '•••• 1234',
+          style: TextStyle(color: Color(0x3C3C4399), fontSize: 13.11),
+        ),
       ],
     ),
   );
@@ -124,22 +140,29 @@ class ApplePayBottomSheet extends StatelessWidget {
   );
 
   Widget _buildAccountCard() => _card(
-    content: Text('Account: username@icloud.com', style: TextStyle(color: Color(0x3C3C4399), fontSize: 13)),
-  );
-
-  Widget _card({Widget? leading, required Widget content, Widget? trailing}) => Container(
-    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    padding: EdgeInsets.all(12),
-    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-    child: Row(
-      children: [
-        if (leading != null) leading,
-        SizedBox(width: 12),
-        Expanded(child: content),
-        if (trailing != null) trailing,
-      ],
+    content: Text(
+      'Account: username@icloud.com',
+      style: TextStyle(color: Color(0x3C3C4399), fontSize: 13),
     ),
   );
+
+  Widget _card({Widget? leading, required Widget content, Widget? trailing}) =>
+      Container(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            if (leading != null) leading,
+            SizedBox(width: 12),
+            Expanded(child: content),
+            if (trailing != null) trailing,
+          ],
+        ),
+      );
 
   Widget _buildPaymentSummary() => Container(
     color: Colors.white,
@@ -150,7 +173,10 @@ class ApplePayBottomSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Pay recharge', style: TextStyle(color: Colors.grey)),
-            Text('\$4.99', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(
+              '\$4.99',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         Spacer(),
@@ -163,7 +189,14 @@ class ApplePayBottomSheet extends StatelessWidget {
     style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF007AFF)),
     onPressed: () {
       // Simulate Apple Pay confirmation
-      js.context.callMethod('startApplePay', [clientToken, 'handleApplePayResult']);
+      // js.context.callMethod('startApplePay', [clientToken, 'handleApplePayResult']);
+      // if (isWeb) {
+      //   startApplePay(clientToken);
+      // }
+      kIsWeb
+          ? () => startApplePay(clientToken)
+          : null;
+
     },
     child: Text('Double-click side button to confirm'),
   );
@@ -178,4 +211,3 @@ class ApplePayBottomSheet extends StatelessWidget {
     ),
   );
 }
-

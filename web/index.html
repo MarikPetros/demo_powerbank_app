@@ -7,42 +7,84 @@
     <base href="/">
     <script src="https://js.braintreegateway.com/web/3.91.0/js/client.min.js"></script>
     <script src="https://js.braintreegateway.com/web/3.91.0/js/apple-pay.min.js"></script>
-    <script>
-        function startApplePay(clientToken, callbackName) {
-          braintree.client.create({ authorization: clientToken }, function (err, clientInstance) {
-            if (err) return console.error(err);
+    <!--    <script>-->
+    <!--        function startApplePay(clientToken, callbackName) {-->
+    <!--          braintree.client.create({ authorization: clientToken }, function (err, clientInstance) {-->
+    <!--            if (err) return console.error(err);-->
 
-            braintree.applePay.create({ client: clientInstance }, function (err, applePayInstance) {
-              if (err) return console.error(err);
+    <!--            braintree.applePay.create({ client: clientInstance }, function (err, applePayInstance) {-->
+    <!--              if (err) return console.error(err);-->
 
-              const paymentRequest = applePayInstance.createPaymentRequest({
-                total: { label: 'Recharge', amount: '4.99' },
-                requiredBillingContactFields: ['postalAddress']
-              });
+    <!--              const paymentRequest = applePayInstance.createPaymentRequest({-->
+    <!--                total: { label: 'Recharge', amount: '4.99' },-->
+    <!--                requiredBillingContactFields: ['postalAddress']-->
+    <!--              });-->
 
-              const session = new ApplePaySession(3, paymentRequest);
+    <!--              const session = new ApplePaySession(3, paymentRequest);-->
 
-              session.onvalidatemerchant = function (event) {
-                applePayInstance.performValidation({ validationURL: event.validationURL })
-                  .then(data => session.completeMerchantValidation(data));
-              };
+    <!--              session.onvalidatemerchant = function (event) {-->
+    <!--                applePayInstance.performValidation({ validationURL: event.validationURL })-->
+    <!--                  .then(data => session.completeMerchantValidation(data));-->
+    <!--              };-->
 
-              session.onpaymentauthorized = function (event) {
-                applePayInstance.tokenize({ token: event.payment.token })
-                  .then(payload => {
-                    window.handleApplePayResult(payload.nonce);
-                    session.completePayment(ApplePaySession.STATUS_SUCCESS);
-                  });
-              };
+    <!--              session.onpaymentauthorized = function (event) {-->
+    <!--                applePayInstance.tokenize({ token: event.payment.token })-->
+    <!--                  .then(payload => {-->
+    <!--                    window.handleApplePayResult(payload.nonce);-->
+    <!--                    session.completePayment(ApplePaySession.STATUS_SUCCESS);-->
+    <!--                  });-->
+    <!--              };-->
 
-              session.begin();
-            });
-          });
-        }
-    </script>
+    <!--              session.begin();-->
+    <!--            });-->
+    <!--          });-->
+    <!--        }-->
+    <!--    </script>-->
 </head>
 <body>
 <script src="flutter.js" defer></script>
+<script src="flutter.js" defer></script>
+<script>
+    function startApplePay(clientToken) {
+      braintree.client.create({ authorization: clientToken }, (err, clientInstance) => {
+        if (err) return console.error(err);
+        braintree.applePay.create({ client: clientInstance }, (err, applePayInstance) => {
+          if (err) return console.error(err);
+
+          const paymentRequest = applePayInstance.createPaymentRequest({
+            total: { label: 'Recharge', amount: '4.99' },
+            countryCode: 'US',
+            currencyCode: 'USD',
+            supportedNetworks: ['amex','masterCard','visa'],
+            merchantCapabilities: ['supports3DS']
+          });
+
+          const session = new ApplePaySession(3, paymentRequest);
+
+          session.onvalidatemerchant = event => {
+            applePayInstance.performValidation({ validationURL: event.validationURL })
+              .then(merchantSession => session.completeMerchantValidation(merchantSession))
+              .catch(console.error);
+          };
+
+          session.onpaymentauthorized = event => {
+            applePayInstance.tokenize({ token: event.payment.token })
+              .then(payload => {
+                window.handleApplePayResult(payload.nonce);
+                session.completePayment(ApplePaySession.STATUS_SUCCESS);
+              })
+              .catch(err => {
+                console.error(err);
+                session.completePayment(ApplePaySession.STATUS_FAILURE);
+              });
+          };
+
+          session.begin();
+        });
+      });
+    }
+</script>
+
 <script>
     window.addEventListener('DOMContentLoaded', () => {
       if (window._flutter && window._flutter.loader) {
