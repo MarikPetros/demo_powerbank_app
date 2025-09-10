@@ -50,9 +50,11 @@ dependencies:
   url_launcher: ^6.3.2
   js_interop: ^0.0.1
   web: ^1.1.1
+  pay: ^3.2.1
 
 
 
+  bloc: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

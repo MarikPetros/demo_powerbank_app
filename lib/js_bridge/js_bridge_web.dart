@@ -6,5 +6,5 @@ void registerApplePayCallback(Function(String) onNonce) {
 }
 
 void startApplePay(String clientToken) {
-  js.context.callMethod('startApplePay', [clientToken, 'handleApplePayResult']);
+  js.context.callMethod('startApplePay', [clientToken]);//, 'handleApplePayResult']);
 }

@@ -6,7 +6,7 @@ class PaymentLoading extends PaymentState {}
 
 class PaymentReady extends PaymentState {
   final String clientToken;
-  PaymentReady(this.clientToken);
+  PaymentReady({required this.clientToken});
 }
 
 class PaymentSuccess extends PaymentState {}

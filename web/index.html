@@ -44,37 +44,85 @@
 <body>
 <script src="flutter.js" defer></script>
 <script src="flutter.js" defer></script>
+<!--<script>-->
+<!--    function startApplePay(clientToken) {-->
+<!--      braintree.client.create({ authorization: clientToken }, (err, clientInstance) => {-->
+<!--        if (err) return console.error(err);-->
+<!--        braintree.applePay.create({ client: clientInstance }, (err, applePayInstance) => {-->
+<!--          if (err) return console.error(err);-->
+
+<!--          const paymentRequest = applePayInstance.createPaymentRequest({-->
+<!--            total: { label: 'Recharge', amount: '4.99' },-->
+<!--            countryCode: 'US',-->
+<!--            currencyCode: 'USD',-->
+<!--            supportedNetworks: ['amex','masterCard','visa'],-->
+<!--            merchantCapabilities: ['supports3DS']-->
+<!--          });-->
+
+<!--          const session = new ApplePaySession(3, paymentRequest);-->
+
+<!--          session.onvalidatemerchant = event => {-->
+<!--            applePayInstance.performValidation({ validationURL: event.validationURL })-->
+<!--              .then(merchantSession => session.completeMerchantValidation(merchantSession))-->
+<!--              .catch(console.error);-->
+<!--          };-->
+
+<!--          session.onpaymentauthorized = event => {-->
+<!--            applePayInstance.tokenize({ token: event.payment.token })-->
+<!--              .then(payload => {-->
+<!--                window.handleApplePayResult(payload.nonce);-->
+<!--                session.completePayment(ApplePaySession.STATUS_SUCCESS);-->
+<!--              })-->
+<!--              .catch(err => {-->
+<!--                console.error(err);-->
+<!--                session.completePayment(ApplePaySession.STATUS_FAILURE);-->
+<!--              });-->
+<!--          };-->
+
+<!--          session.begin();-->
+<!--        });-->
+<!--      });-->
+<!--    }-->
+<!--</script>-->
 <script>
     function startApplePay(clientToken) {
-      braintree.client.create({ authorization: clientToken }, (err, clientInstance) => {
-        if (err) return console.error(err);
-        braintree.applePay.create({ client: clientInstance }, (err, applePayInstance) => {
-          if (err) return console.error(err);
+      // 1. Create a Braintree client
+      braintree.client.create({ authorization: clientToken }, function (err, clientInstance) {
+        if (err) return console.error('Client error', err);
 
+        // 2. Create the ApplePay component
+        braintree.applePay.create({ client: clientInstance }, function (err, applePayInstance) {
+          if (err) return console.error('ApplePay create error', err);
+
+          // 3. Build the Apple Pay request
           const paymentRequest = applePayInstance.createPaymentRequest({
-            total: { label: 'Recharge', amount: '4.99' },
             countryCode: 'US',
             currencyCode: 'USD',
-            supportedNetworks: ['amex','masterCard','visa'],
+            total: { label: 'PowerBank Rental', amount: '4.99' },
+            supportedNetworks: ['visa', 'masterCard', 'amex'],
             merchantCapabilities: ['supports3DS']
           });
 
+          // 4. Launch the native Apple Pay sheet
           const session = new ApplePaySession(3, paymentRequest);
 
+          // 5. Handle merchant validation using Braintree SDK
           session.onvalidatemerchant = event => {
             applePayInstance.performValidation({ validationURL: event.validationURL })
               .then(merchantSession => session.completeMerchantValidation(merchantSession))
-              .catch(console.error);
+              .catch(err => console.error('Validation error', err));
           };
 
+          // 6. Handle payment authorization and tokenize
           session.onpaymentauthorized = event => {
             applePayInstance.tokenize({ token: event.payment.token })
               .then(payload => {
+                // payload.nonce is your Braintree payment nonce
                 window.handleApplePayResult(payload.nonce);
                 session.completePayment(ApplePaySession.STATUS_SUCCESS);
               })
               .catch(err => {
-                console.error(err);
+                console.error('Tokenize error', err);
                 session.completePayment(ApplePaySession.STATUS_FAILURE);
               });
           };

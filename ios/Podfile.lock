@@ -35,6 +35,8 @@ PODS:
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
+  - pay_ios (0.0.1):
+    - Flutter
   - url_launcher_ios (0.0.1):
     - Flutter
 
@@ -42,6 +44,7 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_braintree (from `.symlinks/plugins/flutter_braintree/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
+  - pay_ios (from `.symlinks/plugins/pay_ios/ios`)
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
@@ -56,6 +59,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_braintree/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
+  pay_ios:
+    :path: ".symlinks/plugins/pay_ios/ios"
   url_launcher_ios:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
@@ -65,6 +70,7 @@ SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_braintree: 72276002464c36b1d5a6266fbdb94c0b600e62fd
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  pay_ios: 8c7beb9c61d885f3f51b61f75f8793023fc8843a
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
 
 PODFILE CHECKSUM: abd443950e39581896bf0041a9c0725c8b2dbfb8
