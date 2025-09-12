@@ -2,7 +2,7 @@
 const applePayJson = '''
 {
   "provider": "apple_pay",
-  "data": {
+  "data": {  
     "merchantIdentifier": "merchant.com.marikpetros",
     "displayName": "PowerBank App",
     "merchantCapabilities": ["3DS"],

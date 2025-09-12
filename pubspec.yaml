@@ -55,6 +55,8 @@ dependencies:
 
 
   bloc: any
+#  braintree_flutter_plus: ^5.0.6
+#  braintree_flutter_plus: ^5.0.5
 dev_dependencies:
   flutter_test:
     sdk: flutter

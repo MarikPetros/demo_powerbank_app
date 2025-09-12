@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'bloc/payment_bloc.dart';
-import 'bloc/payment_event.dart';
+// import 'bloc/payment_event.dart';
 import 'services/payment_service.dart';
 import 'screens/qr_code_screen.dart';
 import 'screens/payment_screen.dart';
@@ -18,7 +18,7 @@ void main() {
   registerApplePayCallback((nonce) {
     final stationId = Uri.base.queryParameters['stationId'] ?? '';
     paymentBloc.add(
-      SubmitApplePay(paymentNonce: nonce, stationId: stationId),
+      SubmitPaymentViaBraintreeDropIn(stationId: stationId, amount: '', currencyCode: ''),
     );
   });
 
