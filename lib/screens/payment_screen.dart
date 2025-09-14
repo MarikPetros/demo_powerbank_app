@@ -1,315 +1,328 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-// flutter_braintree specific imports are handled within the BLoC
+import 'package:flutter/foundation.dart' show kIsWeb; // For kIsWeb check
 
+// Assuming these are your BLoC and event paths
 import '../bloc/payment_bloc.dart';
-import 'package:powerbank_app/js_interop_manager.dart';
-import '../services/payment_service.dart'; // For PaymentService in BlocProvider
 
-class PaymentScreen extends StatelessWidget {
+class PaymentScreen extends StatefulWidget {
   final String stationId;
+
   const PaymentScreen({super.key, required this.stationId});
 
-  // Define payment details here or pass them if they are dynamic
-  final String paymentAmount = "4.99";
-  final String currencyCode = "USD";
+  @override
+  State<PaymentScreen> createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Dispatch event to initialize payment flow when screen loads
+    // Pass the stationId received by the screen
+    context.read<PaymentBloc>().add(InitPaymentFlow(stationId: widget.stationId));
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => PaymentBloc(service: PaymentService(), jsInteropManager: JSInteropManager())
-        ..add(InitPaymentFlow(stationId:  stationId)), // Pass stationId if needed for Init
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Rent Power Bank')),
-        body: SafeArea(
-          child: BlocConsumer<PaymentBloc, PaymentState>( // Use BlocConsumer for listening to side effects like errors
-            listener: (context, state) {
-              if (state is PaymentError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: ${state.message}')),
-                );
-              }
-            },
-            builder: (context, state) {
-              debugPrint('🔄 PaymentState: ${state.runtimeType}');
+    // These values are based on your Figma description
+    const String displayedAmount = "\$4.99";
+    const String originalAmount = "\$9.99";
+    const String currencyCode = "USD"; // Should match BLoC and Braintree setup
 
-              if (state is PaymentSuccess) {
-                // Use WidgetsBinding.instance.addPostFrameCallback to ensure navigation happens
-                // after the current build cycle, especially if state change triggers rebuild.
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (ModalRoute.of(context)?.isCurrent ?? false) { // Ensure screen is still active
-                    context.go('/success');
-                  }
-                });
-                return const Center(child: Text('Payment Successful! Redirecting...'));
-              }
+    return Scaffold(
+      // backgroundColor: Colors.white, // Default is usually white
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false, // Assuming no back button based on flow
+        title: Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10.0, left: 0), // Adjust padding as per Figma
+            // Replace with your actual logo widget or Image.asset
+            child: Text(
+                "YOUR_LOGO",
+                style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20
+                )
+            ),
+          ),
+        ),
+      ),
+      body: BlocConsumer<PaymentBloc, PaymentState>(
+        listener: (context, state) {
+          if (state is PaymentSuccess) {
+            context.go('/success'); // Navigate to success screen
+          }
+          if (state is PaymentError) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(state.message)));
+          }
+          if (state is PaymentCancelled) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(const SnackBar(content: Text("Payment cancelled.")));
+          }
+        },
+        builder: (context, state) {
+          if (state is PaymentInitial || (state is PaymentLoading && state.message == 'Initializing...')) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              if (state is PaymentLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              // For PaymentError, the listener above will show a SnackBar.
-              // We can still show a message in the UI body if desired.
-              if (state is PaymentError && state.message.isNotEmpty) { // Check if message is not empty
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Payment Failed: ${state.message}', textAlign: TextAlign.center),
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            // Optionally, allow re-initialization or retry
-                            context.read<PaymentBloc>().add(InitPaymentFlow(stationId:  stationId));
-                          },
-                          child: const Text('Try Again'),
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              // This will be the main UI when state is PaymentInitial or PaymentReady
-              // Or if PaymentError has an empty message (fallback)
-              return Padding(
-                padding: const EdgeInsets.all(24.0),
+          if (state is PaymentError && !(state is PaymentReady)) { // Show error if not in a ready state
+            return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Error: ${state.message}", style: TextStyle(color: Colors.red)),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                        onPressed: (){
+                          context.read<PaymentBloc>().add(InitPaymentFlow(stationId: widget.stationId));
+                        },
+                        child: Text("Retry Initialization")
+                    )
+                  ],
+                )
+            );
+          }
+
+          // Determine if Apple Pay button should be shown
+          bool showApplePayButton = false;
+          if (state is PaymentReady) {
+            showApplePayButton = state.isApplePayAvailable;
+          } else if (state is PaymentProcessing) {
+            // Keep showing Apple Pay button as available if we were in PaymentReady before processing
+            // This is a simplification; you might need to access previous state or refine.
+            // For now, let's assume if processing, it was available.
+            // A better way would be to store isApplePayAvailable in the BLoC directly.
+            // Let's assume the BLoC's _reEmitPaymentReady handles this.
+          }
+
+
+          return Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const SizedBox(height: 20), // Space under logo/appbar
                     const Text(
-                      'Complete Your Payment',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      'Monthly Subscription',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Amount: $paymentAmount $currencyCode',
-                      style: const TextStyle(fontSize: 18),
+                    const SizedBox(height: 15),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          displayedAmount,
+                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.black),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          originalAmount,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'First month only',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 32),
-                    // if (state is PaymentReady || state is PaymentInitial || (state is PaymentError && state.message.isEmpty))
-                      // ElevatedButton(
-                      //   style: ElevatedButton.styleFrom(
-                      //     // backgroundColor: Colors.black, // Example styling
-                      //     padding: const EdgeInsets.symmetric(vertical: 12),
-                      //     textStyle: const TextStyle(fontSize: 18),
-                      //   ),
-                      //   onPressed: (state is PaymentLoading) // Disable button while loading
-                      //       ? null
-                      //       : () {
-                      //     // Dispatch the event that uses BraintreeDropIn
-                      //     context.read<PaymentBloc>().add(
-                      //       SubmitPaymentViaBraintreeDropIn(
-                      //         stationId: stationId,
-                      //         amount: paymentAmount,
-                      //         currencyCode: currencyCode,
-                      //       ),
-                      //     );
-                      //   },
-                      //   // You can use an Apple Pay like icon or text
-                      //   child: const Row(
-                      //     mainAxisAlignment: MainAxisAlignment.center,
-                      //     children: [
-                      //       // Icon(Icons.apple, color: Colors.white), // If you want an icon
-                      //       // SizedBox(width: 8),
-                      //       Text('Pay with Braintree'), // Or 'Pay Now' or 'Pay with Apple Pay'
-                      //       // The Braintree DropIn will show the Apple Pay option if available
-                      //     ],
-                      //   ),
-                      // ),
-                    // payment_screen.dart - relevant part
-// ...
-                    if (kIsWeb && state is PaymentReady && state.isApplePayAvailable)
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.apple), // Or a proper Apple Pay button asset
-                        label: const Text('Pay with Apple Pay (Web)'),
-                        onPressed: () {
+                    const SizedBox(height: 25),
+                    const Divider(color: Colors.grey, height: 1),
+                    const SizedBox(height: 25),
+
+                    // --- Apple Pay Button ---
+                    if (kIsWeb && showApplePayButton) // Only show if available on web
+                      _ApplePayButton(
+                        onPressed: (state is PaymentProcessing) ? null : () {
                           context.read<PaymentBloc>().add(
-                            RequestApplePayPayment(
-                              stationId: stationId,
-                              amount: paymentAmount, // Make sure these are passed
-                              currencyCode: currencyCode,
+                            RequestApplePayPaymentViaWeb(
+                              stationId: widget.stationId,
+                              amount: PaymentBloc.paymentAmount, // Use constant from BLoC
+                              currencyCode: PaymentBloc.currencyCode, // Use constant from BLoC
                             ),
                           );
                         },
                       ),
-// ...
+                    if (kIsWeb && showApplePayButton) const SizedBox(height: 20),
 
-                    if (state is PaymentLoading) // Show loading text near button if preferred
-                      const Padding(
-                        padding: EdgeInsets.only(top: 16.0),
-                        child: Text('Processing payment...', textAlign: TextAlign.center),
-                      ),
+
+                    // --- Debit or Credit Card Button ---
+                    _DebitCreditCardButton(
+                      onPressed: (state is PaymentProcessing) ? null : () {
+                        // TODO: Implement card payment initiation
+                        // This will likely involve showing a card form (e.g., Braintree Hosted Fields)
+                        // which would be managed via JS Interop.
+                        // For now, we can add the event for the BLoC to handle.
+                        debugPrint("Debit/Credit Card button pressed. JS for card form is TODO.");
+                        context.read<PaymentBloc>().add(
+                          RequestCardPaymentViaWeb(
+                            stationId: widget.stationId,
+                            amount: PaymentBloc.paymentAmount,
+                            currencyCode: PaymentBloc.currencyCode,
+                          ),
+                        );
+                        // ScaffoldMessenger.of(context).showSnackBar(
+                        //   const SnackBar(content: Text('Card payment form (JS) to be implemented.')),
+                        // );
+                      },
+                    ),
+                    const Spacer(), // Pushes bottom content down
                   ],
                 ),
-              );
-            },
+              ),
+              // Bottom Bar (as per Figma: button and tabs with dark gray background)
+              // This is a simplified representation. Tabs would need more setup.
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  color: Colors.grey[800], // Dark gray background
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green, // Example color
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: (state is PaymentProcessing) ? null : () {
+                          // This button's action depends on what's selected (Apple Pay or Card)
+                          // Or if it's a generic "Pay" button after selecting a method.
+                          // For this design, it seems payment methods are directly actionable.
+                          // If this is a separate "Confirm Purchase" button, the logic would differ.
+                          // Based on Figma, the Apple Pay and Card buttons are direct actions.
+                          // So, this button might be for something else or not needed if other buttons trigger payment.
+                          // Let's assume it's like a general action button not directly tied to payment for now.
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bottom button action TBD')),
+                          );
+                        },
+                        child: const Text('BOTTOM ACTION BUTTON', style: TextStyle(fontSize: 16, color: Colors.white)),
+                      ),
+                      const SizedBox(height: 10),
+                      // Placeholder for Tabs
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Icon(Icons.home, color: Colors.white70),
+                          Icon(Icons.map, color: Colors.white70),
+                          Icon(Icons.account_circle, color: Colors.white70),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Loading Overlay
+              if (state is PaymentProcessing)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 10),
+                        Text(state.message, style: TextStyle(color: Colors.white, fontSize: 16))
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// --- Custom Apple Pay Button Widget ---
+class _ApplePayButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  const _ApplePayButton({this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.apple, color: Colors.white, size: 28), // Example Apple icon
+      label: const Text(
+        'Pay with Apple Pay',
+        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w500),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        minimumSize: const Size(double.infinity, 50), // Make button wide
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8), // Rounded corners
+        ),
+      ),
+      onPressed: onPressed,
+    );
+  }
+}
+
+// --- Custom Debit/Credit Card Button Widget ---
+class _DebitCreditCardButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  const _DebitCreditCardButton({this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: Colors.grey[300]!)
+      ),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          // decoration: BoxDecoration(
+          //   color: Colors.white, // White background
+          //   borderRadius: BorderRadius.circular(8),
+          //   border: Border.all(color: Colors.grey[300]!), // Delimiters
+          // ),
+          child: Row(
+            children: [
+              // Placeholder for card icons
+              Icon(Icons.credit_card, color: Colors.grey[700]),
+              const SizedBox(width: 15),
+              const Expanded(
+                child: Text(
+                  'Debit or credit card',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey[700]),
+            ],
           ),
         ),
       ),
     );
   }
 }
-
-//*****************************************************
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:go_router/go_router.dart';
-//
-// import '../bloc/payment_bloc.dart';
-// // payment_event.dart and payment_state.dart are implicitly imported via payment_bloc.dart if using part/part of
-// // or import them directly if not.
-// import '../services/payment_service.dart';
-// // import 'package:powerbank_app/bloc/payment_event.dart';
-// // import 'package:powerbank_app/bloc/payment_state.dart';
-//
-// class PaymentScreen extends StatelessWidget {
-//   final String stationId;
-//   const PaymentScreen({super.key, required this.stationId});
-//
-//   // Example payment details - make these dynamic as needed
-//   final String paymentAmount = "4.99";
-//   final String currencyCode = "USD";
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return BlocProvider(
-//       create: (_) => PaymentBloc(PaymentService())
-//         ..add(InitPaymentFlow(stationId: stationId)),
-//       child: Scaffold(
-//         appBar: AppBar(title: const Text('Complete Payment')),
-//         body: SafeArea(
-//           child: BlocConsumer<PaymentBloc, PaymentState>(
-//             listener: (context, state) {
-//               if (state is PaymentError) {
-//                 ScaffoldMessenger.of(context).showSnackBar(
-//                   SnackBar(
-//                       content: Text('Error: ${state.message}'),
-//                       backgroundColor: Colors.red),
-//                 );
-//               } else if (state is PaymentCancelled) {
-//                 ScaffoldMessenger.of(context).showSnackBar(
-//                   const SnackBar(content: Text('Payment was cancelled.')),
-//                 );
-//               }
-//             },
-//             builder: (context, state) {
-//               debugPrint('PaymentScreen 🔄 PaymentState: ${state.runtimeType}');
-//
-//               if (state is PaymentSuccess) {
-//                 WidgetsBinding.instance.addPostFrameCallback((_) {
-//                   if (ModalRoute.of(context)?.isCurrent ?? false) {
-//                     context.go('/success'); // Navigate to your success screen
-//                   }
-//                 });
-//                 return const Center(child: Text('Payment Successful! Redirecting...'));
-//               }
-//
-//               if (state is PaymentLoading) {
-//                 return Center(
-//                     child: Column(
-//                       mainAxisAlignment: MainAxisAlignment.center,
-//                       children: [
-//                         const CircularProgressIndicator(),
-//                         const SizedBox(height: 16),
-//                         Text(state.message ?? 'Processing...'),
-//                       ],
-//                     ));
-//               }
-//
-//               // UI for PaymentInitial, PaymentReady, or after PaymentCancelled/PaymentError
-//               bool applePayAvailable = false;
-//               if (state is PaymentReady) {
-//                 applePayAvailable = state.isApplePayAvailable;
-//               }
-//
-//               return Padding(
-//                 padding: const EdgeInsets.all(24.0),
-//                 child: Column(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   crossAxisAlignment: CrossAxisAlignment.stretch,
-//                   children: [
-//                     const Text(
-//                       'Choose Payment Method',
-//                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                     const SizedBox(height: 16),
-//                     Text(
-//                       'Amount: $paymentAmount $currencyCode',
-//                       style: const TextStyle(fontSize: 18),
-//                       textAlign: TextAlign.center,
-//                     ),
-//                     const SizedBox(height: 32),
-//
-//                     // Apple Pay Button (show only if available and state is ready)
-//                     if (state is PaymentReady && applePayAvailable)
-//                       ElevatedButton.icon(
-//                         icon: const Icon(Icons.apple), // Simple Apple icon
-//                         label: const Text('Pay with Apple Pay'),
-//                         style: ElevatedButton.styleFrom(
-//                           backgroundColor: Colors.black,
-//                           foregroundColor: Colors.white,
-//                           padding: const EdgeInsets.symmetric(vertical: 12),
-//                           textStyle: const TextStyle(fontSize: 18),
-//                         ),
-//                         onPressed: () {
-//                           context.read<PaymentBloc>().add(
-//                             RequestApplePayPayment(
-//                               stationId: stationId,
-//                               amount: paymentAmount,
-//                               currencyCode: currencyCode,
-//                             ),
-//                           );
-//                         },
-//                       ),
-//                     if (state is PaymentReady && applePayAvailable)
-//                       const SizedBox(height: 16),
-//
-//                     // Card Payment Button (show if state is ready)
-//                     if (state is PaymentReady)
-//                       ElevatedButton.icon(
-//                         icon: const Icon(Icons.credit_card),
-//                         label: const Text('Pay with Card'),
-//                         style: ElevatedButton.styleFrom(
-//                           padding: const EdgeInsets.symmetric(vertical: 12),
-//                           textStyle: const TextStyle(fontSize: 18),
-//                         ),
-//                         onPressed: () {
-//                           context.read<PaymentBloc>().add(
-//                             RequestCardPayment(
-//                               stationId: stationId,
-//                               amount: paymentAmount,
-//                               currencyCode: currencyCode,
-//                             ),
-//                           );
-//                         },
-//                       ),
-//
-//                     const SizedBox(height: 20),
-//                     if (state is PaymentError) // Show a retry option on error
-//                       ElevatedButton(
-//                         onPressed: () {
-//                           context.read<PaymentBloc>().add(InitPaymentFlow(stationId: stationId));
-//                         },
-//                         child: const Text('Try Again'),
-//                       )
-//
-//                   ],
-//                 ),
-//               );
-//             },
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-//

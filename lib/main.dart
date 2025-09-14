@@ -24,7 +24,7 @@ void main() {
   final jsInteropManager = JSInteropManager(); // Your class that handles JS calls and callbacks
 
   final paymentBloc = PaymentBloc(
-    service: paymentService,
+    paymentService: paymentService,
     jsInteropManager: jsInteropManager, // Pass it to the BLoC
   );
 
