@@ -1,543 +1,258 @@
-// // import 'package:bloc/bloc.dart';
-// //
-// // import '../services/payment_service.dart';
-// // import 'payment_event.dart';
-// // import 'payment_state.dart';
-// //
-// // class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
-// //   final PaymentService _service;
-// //   late String _accessJwt;
-// //   late String _clientToken;
-// //
-// //   PaymentBloc(this._service) : super(PaymentInitial()) {
-// //     on<InitPaymentFlow>(_onInit);
-// //     on<SubmitApplePay>(_onSubmitApplePay);
-// //   }
-// //
-// //   Future<void> _onInit(
-// //     InitPaymentFlow event,
-// //     Emitter<PaymentState> emit,
-// //   ) async {
-// //     emit(PaymentLoading());
-// //     try {
-// //       _accessJwt = await _service.generateAccount();
-// //       _clientToken = await _service.getClientToken(_accessJwt);
-// //       emit(PaymentReady(clientToken: _clientToken));
-// //     } catch (e) {
-// //       emit(PaymentError(e.toString()));
-// //     }
-// //   }
-// //
-// //   Future<void> _onSubmitApplePay(
-// //     SubmitApplePay event,
-// //     Emitter<PaymentState> emit,
-// //   ) async {
-// //     emit(PaymentLoading());
-// //     try {
-// //       // 1) Add payment method
-// //       final methodToken = await _service.addPaymentMethod(
-// //         accessJwt: _accessJwt,
-// //         paymentNonce: event.paymentNonce,
-// //       );
-// //
-// //       // 2) Create subscription
-// //       await _service.createSubscription(
-// //         accessJwt: _accessJwt,
-// //         methodToken: methodToken,
-// //       );
-// //
-// //       // 3) Rent the power bank
-// //       await _service.rentPowerBank(
-// //         accessJwt: _accessJwt,
-// //         cabinetId: event.stationId,
-// //         connectionKey: event.stationId,
-// //       );
-// //
-// //       emit(PaymentSuccess());
-// //     } catch (e) {
-// //       emit(PaymentError(e.toString()));
-// //     }
-// //   }
-// // }
-//
-// // lib/bloc/payment_bloc.dart
-//
-// import 'dart:convert';
-//
-// import 'package:bloc/bloc.dart';
-// import 'package:flutter_braintree/flutter_braintree.dart';
-//
-// import '../services/payment_service.dart';
-// import 'payment_event.dart';
-// import 'payment_state.dart';
-//
-// class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
-//   final PaymentService _service;
-//   late String _accessJwt;
-//   late String _clientToken; // from your backend
-//
-//   PaymentBloc(this._service) : super(PaymentInitial()) {
-//     on<InitPaymentFlow>(_onInit);
-//     on<SubmitApplePay>(_onSubmitApplePay);
-//   }
-//
-//   Future<void> _onInit(
-//     InitPaymentFlow event,
-//     Emitter<PaymentState> emit,
-//   ) async {
-//     emit(PaymentLoading());
-//     try {
-//       _accessJwt = await _service.generateAccount();
-//       _clientToken = await _service.getClientToken(_accessJwt);
-//       emit(PaymentReady(clientToken: _clientToken));
-//     } catch (e) {
-//       emit(PaymentError(e.toString()));
-//     }
-//   }
-//
-//   Future<void> _onSubmitApplePay(
-//     SubmitApplePay event,
-//     Emitter<PaymentState> emit,
-//   ) async {
-//     emit(PaymentLoading());
-//     try {
-//       // 1) First tokenize the Apple Pay token into a Braintree nonce
-//       final applePayJsonString = event.paymentNonce;
-//       final applePayData =
-//           jsonDecode(applePayJsonString) as Map<String, dynamic>;
-//
-//       final request = BraintreeApplePayRequest(
-//         paymentSummaryItems: applePayData['paymentSummaryItems'],
-//         displayName: applePayData['displayName'],
-//         currencyCode: applePayData['currencyCode'],
-//         countryCode: applePayData['countryCode'],
-//         merchantIdentifier: applePayData['merchantIdentifier'],
-//         supportedNetworks: applePayData['supportedNetworks'],
-//       );
-//
-//       final tokenizationResult = await Braintree.showCreditCardForm(
-//         clientToken: _clientToken,
-//         applePayRequest: request,
-//       );
-//
-//       if (tokenizationResult == null) {
-//         throw Exception('Apple Pay authorization was canceled by user.');
-//       }
-//
-//       final braintreeNonce = tokenizationResult.nonce;
-//
-//       // 2) Vault that nonce on your backend
-//       final methodToken = await _service.addPaymentMethod(
-//         accessJwt: _accessJwt,
-//         paymentNonce: braintreeNonce,
-//       );
-//
-//       // 3) Create the subscription
-//       await _service.createSubscription(
-//         accessJwt: _accessJwt,
-//         methodToken: methodToken,
-//       );
-//
-//       // 4) Rent the power bank
-//       await _service.rentPowerBank(
-//         accessJwt: _accessJwt,
-//         cabinetId: event.stationId,
-//         connectionKey: event.stationId,
-//       );
-//
-//       emit(PaymentSuccess());
-//     } catch (e) {
-//       emit(PaymentError(e.toString()));
-//     }
-//   }
-// }
-
-//******************
-
-// lib/bloc/payment_bloc.dart
-
-
+// payment_bloc.dart
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter/cupertino.dart';
-// Ensure you have this import for BraintreeDropIn and related classes
-import 'package:flutter_braintree/flutter_braintree.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb and debugPrint
+import 'package:powerbank_app/js_interop_manager.dart';
 
 import '../services/payment_service.dart';
+// Conditionally import the web interop or a placeholder for non-web
+import 'web_apple_pay_interop.dart'
+    if (dart.library.html) 'web_apple_pay_interop.dart'
+    if (dart.library.io) 'web_apple_pay_stub.dart';
+
 part 'payment_event.dart';
 part 'payment_state.dart';
 
 class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
-  final PaymentService _service;
+  final PaymentService service;
   late String _accessJwt;
+  final JSInteropManager jsInteropManager;
   late String _braintreeClientToken;
 
-  PaymentBloc(this._service) : super(PaymentInitial()) {
-    on<InitPaymentFlow>(_onInit);
-    on<SubmitPaymentViaBraintreeDropIn>(
-      _onSubmitPaymentViaBraintreeDropIn,
-    ); // Renamed for clarity
+  // bool _isApplePayAvailableOnWeb = false; // JS will determine this
+
+  // Instance of our interop wrapper
+  final WebApplePay _webApplePay = WebApplePay();
+
+  PaymentBloc({required this.service, required this.jsInteropManager})
+    : super(PaymentInitial()) {
+    on<InitPaymentFlow>(_onInitPaymentFlow);
+    on<RequestApplePayPayment>(
+      _onRequestApplePayPaymentViaWeb,
+    ); // Renamed event handler
+    on<RequestCardPayment>(
+      _onRequestCardPaymentViaWeb,
+    ); // Renamed event handler
+    on<ProcessPaymentNonceEvent>(_onProcessPaymentNonce); // New event
   }
 
-  Future<void> _onInit(
+  Future<void> _onInitPaymentFlow(
     InitPaymentFlow event,
     Emitter<PaymentState> emit,
   ) async {
-    emit(PaymentLoading());
+    emit(const PaymentLoading(message: 'Initializing payment...'));
     try {
-      _accessJwt = await _service.generateAccount();
-      _braintreeClientToken = await _service.getClientToken(_accessJwt);
+      _accessJwt = await service.generateAccount();
+      _braintreeClientToken = await service.getClientToken(_accessJwt);
+
       if (_braintreeClientToken.isEmpty) {
-        throw Exception("Received an empty Braintree client token.");
+        throw Exception("Braintree client token is empty.");
       }
-      debugPrint('Received Braintree client token: $_braintreeClientToken'); //////////
-      emit(PaymentReady(clientToken: _braintreeClientToken));
-    } catch (e) {
+
+      // For web, Apple Pay availability is checked by the JS SDK when payment is attempted.
+      // We can assume it *might* be available if on Safari.
+      // The `isApplePayAvailable` in PaymentReady can signify if the *option* should be shown.
+      // The actual JS call will confirm.
+      bool shouldShowApplePayOption = true; // Optimistically show on web
+      bool actualApplePayAvailable = false;
+      if (kIsWeb) {
+        debugPrint(
+          "PaymentBloc: Running on Web. Checking Apple Pay availability via JS...",
+        );
+        try {
+          actualApplePayAvailable = await jsInteropManager.checkApplePayAvailability(
+            _braintreeClientToken,
+          );
+        } catch (e) {
+          debugPrint(
+            "PaymentBloc: Error checking web Apple Pay availability: $e",
+          );
+          actualApplePayAvailable = false;
+        }
+      }
+      var _isApplePayAvailableOnWeb =
+          actualApplePayAvailable; // Store this state
+
+      emit(
+        PaymentReady(
+          braintreeClientToken: _braintreeClientToken,
+          isApplePayAvailable: _isApplePayAvailableOnWeb,
+        ),
+      );
+      // if (kIsWeb) {
+      //   // You could try a preliminary JS check here if you want, but
+      //   // Braintree's `canMakePaymentsWithActiveCard` is more robust before session.begin()
+      //   debugPrint("PaymentBloc: Running on Web. Apple Pay option will be shown.");
+      // }
+      //
+      //
+      // emit(PaymentReady(
+      //   braintreeClientToken: _braintreeClientToken,
+      //   isApplePayAvailable: shouldShowApplePayOption,
+      // ));
+    } catch (e, s) {
+      debugPrint('Error in InitPaymentFlow: $e\n$s');
       emit(PaymentError(message: e.toString()));
     }
   }
 
-  Future<void> _onSubmitPaymentViaBraintreeDropIn(
-    SubmitPaymentViaBraintreeDropIn event,
-    // Contains stationId, amount, currency
+  Future<void> _onRequestApplePayPaymentViaWeb(
+    RequestApplePayPayment event,
     Emitter<PaymentState> emit,
   ) async {
-    if (_accessJwt.isEmpty || _braintreeClientToken.isEmpty) {
+    if (!kIsWeb) {
       emit(
-        PaymentError(message: 'Access JWT or Braintree client token is empty.'),
+        const PaymentError(
+          message: 'Apple Pay via Web JS is only supported on Flutter Web.',
+        ),
+      );
+      // Potentially revert to PaymentReady state
+      await Future.delayed(const Duration(milliseconds: 50));
+      emit(
+        PaymentReady(
+          braintreeClientToken: _braintreeClientToken,
+          isApplePayAvailable: false,
+        ),
       );
       return;
     }
 
-    emit(PaymentLoading());
+    if (_braintreeClientToken.isEmpty) {
+      emit(const PaymentError(message: 'Braintree client token is missing.'));
+      return;
+    }
+
+    emit(const PaymentLoading(message: 'Processing Apple Pay via Web...'));
     try {
-      // 1. Configure the BraintreeDropInRequest
-      // This request includes Apple Pay configuration if you want it to be available
-      final dropInRequest = BraintreeDropInRequest(
-        clientToken: _braintreeClientToken,
-        collectDeviceData: false, // Recommended for fraud prevention
-        applePayRequest: BraintreeApplePayRequest(
-          // Configure Apple Pay specific details
-          paymentSummaryItems: [
-            ApplePaySummaryItem(
-              label: 'PowerBank Recharge',
-              amount: double.parse(event.amount),
-              type: ApplePaySummaryItemType.final_,
-            ),
-          ],
-          displayName: 'PowerBank App',
-          currencyCode: event.currencyCode,
-          countryCode: 'US',
-          // Or make dynamic
-          merchantIdentifier: 'merchant.com.marikpetros',
-          // CRITICAL
-          supportedNetworks: [
-            ApplePaySupportedNetworks.visa,
-            ApplePaySupportedNetworks.masterCard,
-            ApplePaySupportedNetworks.amex,
-          ], // Optional
-        ),
-        // googlePayRequest: null, // Disable
-        paypalRequest: null,    // Disable
-        venmoEnabled: false,    // Disable
-        cardEnabled: false,     // Disable
+      // Call the web interop method
+      // final String? nonce = await _webApplePay.startApplePay(_braintreeClientToken);
+      final String? nonce = await jsInteropManager.triggerApplePay(
+        _braintreeClientToken,
+        event.amount,
+        event.currencyCode,
       );
-                                                                 /// stex hasel a  amount-y null a
-      // 2. Show Braintree Drop-in UI
-      final BraintreeDropInResult? result = await BraintreeDropIn.start(
-        dropInRequest,
-      );
-
-      debugPrint('🔔 BraintreeDropInResult: $result');
-
-      if (result == null ||
-          result.paymentMethodNonce.nonce.isEmpty) {
-        // User cancelled or an error occurred
+      if (nonce != null) {
+        add(
+          ProcessPaymentNonceEvent(
+            nonce: nonce,
+            stationId: event.stationId,
+            isApplePay: true,
+            deviceData:
+                null /* JS flow might not easily provide deviceData here without dataCollector */,
+          ),
+        );
+      } else if (nonce == null || nonce.isEmpty) {
+        // This case is now handled by the completer erroring or completing with null for cancellation
+        debugPrint(
+          'Apple Pay was cancelled or failed to produce a nonce (web).',
+        );
+        emit(PaymentCancelled());
+        await Future.delayed(const Duration(milliseconds: 50));
         emit(
-          PaymentReady(clientToken: _braintreeClientToken),
-        ); // Or a specific cancelled state
+          PaymentReady(
+            braintreeClientToken: _braintreeClientToken,
+            isApplePayAvailable: true,
+          ),
+        ); // Or check again
         return;
       }
 
-      final String braintreePaymentMethodNonce =
-          result.paymentMethodNonce.nonce;
-      // final String? deviceData = result.deviceData; // Useful for fraud tools
+      debugPrint('Received Apple Pay Nonce (Web): $nonce');
 
-      // 3. Add payment method using the Braintree Nonce
-      final methodToken = await _service.addPaymentMethod(
+      // Device data for Apple Pay on the Web is typically collected by Braintree's JS SDK
+      // and associated with the transaction on their backend if `dataCollector` is set up.
+      // It's not usually passed explicitly with the nonce from this JS flow.
+      // If your backend *requires* deviceData, you'd need to set up Braintree's DataCollector.js
+      // and send its result alongside the nonce. For now, we'll assume it's not strictly needed
+      // or handled by Braintree's JS SDK automatically if configured in your Braintree account.
+      // String? deviceDataForBackend = null;
+      //
+      // await _processPaymentNonce(
+      //   nonce: nonce,
+      //   stationId: event.stationId,
+      //   isApplePay: true,
+      //   deviceData: deviceDataForBackend,
+      //   emit: emit,
+      // );
+    } on TimeoutException catch (e, s) {
+      debugPrint('Apple Pay Web Request TIMED OUT: $e\n$s');
+      emit(const PaymentError(message: 'Apple Pay process timed out.'));
+    } catch (e, s) {
+      debugPrint('Error during Apple Pay Web request: $e\n$s');
+      emit(
+        PaymentError(message: e.toString()),
+      ); // The completer in WebApplePay will throw
+    }
+  }
+
+  // _onRequestCardPayment would need a similar web interop if using Braintree.js for cards.
+  Future<void> _onRequestCardPaymentViaWeb(RequestCardPayment event, Emitter<PaymentState> emit) async {
+    if (!kIsWeb) { /* handle error */ return; }
+    emit(PaymentLoading(message: "Processing Card Payment..."));
+    try {
+      // Similar to Apple Pay, jsInteropManager would trigger Braintree.js Hosted Fields or Card Form
+      final String? nonce = await jsInteropManager.triggerCardPayment(_braintreeClientToken /*, other params if needed */);
+      if (nonce != null) {
+        add(ProcessPaymentNonceEvent(nonce: nonce, stationId: event.stationId, isApplePay: false, deviceData: null /* JS flow might not easily provide deviceData here without dataCollector */));
+      } else {
+        emit(PaymentCancelled());
+        // Re-emit PaymentReady
+      }
+    } catch (e) {
+      emit(PaymentError(message: e.toString()));
+      // Re-emit PaymentReady
+    }
+  }
+
+
+  Future<void> _onProcessPaymentNonce(ProcessPaymentNonceEvent event, Emitter<PaymentState> emit) async {
+    // This method remains the same
+    // ... (your existing backend communication logic) ...
+    emit(const PaymentLoading(message: "Finalizing payment..."));
+    try {
+      final methodToken = await service.addPaymentMethod(
         accessJwt: _accessJwt,
-        paymentNonce: braintreePaymentMethodNonce,
-        // Potentially add deviceData to your backend call if Braintree recommends it
+        paymentNonce: event.nonce,
+        description:  event.isApplePay
+            ? 'Apple Pay Recharge (Web)'
+            : 'Card Recharge (Web)',
+        paymentType: event.isApplePay ? 'APPLE_PAY' : 'CREDIT_CARD',
+        // deviceData: deviceData, // Send if you have it and backend expects it
       );
 
-      // 4. Create subscription
-      await _service.createSubscription(
+      await service.createSubscription(
         accessJwt: _accessJwt,
-        methodToken: methodToken,
+        methodToken: methodToken /* planId from event/config */,
       );
-
-      // 5. Rent the power bank
-      await _service.rentPowerBank(
+      await service.rentPowerBank(
         accessJwt: _accessJwt,
         cabinetId: event.stationId,
         connectionKey: event.stationId,
       );
-
       emit(PaymentSuccess());
-    } on TimeoutException catch (e, s) {
-      debugPrint('PaymentBloc: BraintreeDropIn.start() TIMED OUT: $e');
-      debugPrint('PaymentBloc: Timeout STACKTRACE: $s');
-      emit(PaymentError(message: 'Payment process timed out. Please check your connection and try again.'));
-    }
-    catch (e, stackTrace) {
-      // Add stackTrace
-      debugPrint(
-        ' PaymentBloc ERROR during backend processing: $e',
-      ); // Make the print distinctive
-      debugPrint(' PaymentBloc STACKTRACE: $stackTrace');
-      emit(PaymentError(message: e.toString()));
+    } catch (e, s) {
+      debugPrint('Error processing payment nonce with backend: $e\n$s');
+      emit(PaymentError(message: 'Backend Error: ${e.toString()}'));
     }
   }
 }
-//^&*(^&*&(*&*&^&^%^$$^&%#####################################
-// import 'dart:async';
-// import 'package:bloc/bloc.dart';
-// import 'package:equatable/equatable.dart';
-// import 'package:flutter/foundation.dart'; // For debugPrint
-// // Import from the new package
-// import 'package:braintree_flutter_plus/braintree_flutter_plus.dart';
-//
-// import '../services/payment_service.dart';
-// // Assuming payment_event.dart and payment_state.dart are in the same directory or adjust path
-// part 'payment_event.dart';
-// part 'payment_state.dart';
-//
-// class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
-//   final PaymentService _service;
-//   late String _accessJwt;
-//   late String _braintreeClientToken;
-//   bool _isApplePayAvailable = false; // Store Apple Pay availability
-//
-//   PaymentBloc(this._service) : super(PaymentInitial()) {
-//     on<InitPaymentFlow>(_onInitPaymentFlow);
-//     on<RequestApplePayPayment>(_onRequestApplePayPayment);
-//     on<RequestCardPayment>(_onRequestCardPayment);
-//     // on<StartBraintreePayment>(_onStartBraintreePayment); // General event if needed
-//   }
-//
-//   Future<void> _onInitPaymentFlow(
-//       InitPaymentFlow event,
-//       Emitter<PaymentState> emit,
-//       ) async {
-//     emit(const PaymentLoading(message: 'Initializing payment...'));
-//     try {
-//       _accessJwt = await _service.generateAccount();
-//       _braintreeClientToken = await _service.getClientToken(_accessJwt);
-//
-//       if (_braintreeClientToken.isEmpty) {
-//         throw Exception("Received an empty Braintree client token.");
-//       }
-//
-//       // Check for Apple Pay availability using braintree_flutter_plus
-//       // This is usually a synchronous check or a quick async check
-//       try {
-//         // braintree_flutter_plus might have a method like this.
-//         // The exact method name might vary, check package docs.
-//         // It might not need the client token for this check.
-//         _isApplePayAvailable = await Braintree.isApplePayAvailable();
-//         debugPrint('Apple Pay Available (braintree_flutter_plus): $_isApplePayAvailable');
-//       } catch (e) {
-//         debugPrint('Error checking Apple Pay availability: $e');
-//         _isApplePayAvailable = false; // Assume not available if check fails
-//       }
-//
-//       emit(PaymentReady(
-//         braintreeClientToken: _braintreeClientToken,
-//         isApplePayAvailable: _isApplePayAvailable,
-//       ));
-//     } catch (e) {
-//       debugPrint('Error in InitPaymentFlow: $e');
-//       emit(PaymentError(message: e.toString()));
-//     }
-//   }
-//
-//   Future<void> _onRequestApplePayPayment(
-//       RequestApplePayPayment event,
-//       Emitter<PaymentState> emit,
-//       ) async {
-//     if (!_isApplePayAvailable) {
-//       emit(const PaymentError(message: 'Apple Pay is not available on this device or not configured.'));
-//       // Re-emit PaymentReady so UI can show alternatives
-//       await Future.delayed(const Duration(milliseconds: 50)); // Small delay to allow error state to be processed
-//       emit(PaymentReady(braintreeClientToken: _braintreeClientToken, isApplePayAvailable: _isApplePayAvailable));
-//       return;
-//     }
-//     if (_braintreeClientToken.isEmpty) {
-//       emit(const PaymentError(message: 'Braintree client token is missing. Please initialize first.'));
-//       return;
-//     }
-//
-//     emit(const PaymentLoading(message: 'Processing Apple Pay...'));
-//     try {
-//       // 1. Create the Apple Pay request for braintree_flutter_plus
-//       final applePayRequest = BraintreeApplePayRequest(
-//         currencyCode: event.currencyCode,
-//         countryCode: 'US', // Or make dynamic if necessary
-//         displayName: 'PowerBank App', // Your company name
-//         merchantIdentifier: 'merchant.com.marikpetros', // CRITICAL: Your registered Merchant ID
-//         paymentSummaryItems: [
-//           ApplePaySummaryItem(
-//             label: 'PowerBank Recharge', // Or a more descriptive label
-//             amount: double.parse(event.amount), // braintree_flutter_plus might want double
-//             type: ApplePaySummaryItemType.final_, // Or other types as needed
-//           ),
-//         ],
-//         supportedNetworks: [ // Usually not needed, Braintree determines from capabilities
-//           ApplePaySupportedNetworks.visa,
-//           ApplePaySupportedNetworks.masterCard,
-//         ],
-//       );
-//
-//       // 2. Request Apple Pay payment
-//       // The method name in `braintree_flutter_plus` might be `Braintree.requestApplePayNonce`
-//       // or similar. It will likely take the clientToken (authorization) and the request.
-//       // The exact API might differ, consult `braintree_flutter_plus` documentation.
-//       // Example based on common patterns:
-//       final BraintreePaymentMethodNonce? nonceResult =
-//       await Braintree.requestApplePayNonce(
-//         authorization: _braintreeClientToken, // or clientToken:
-//         request: applePayRequest,
-//       );
-//
-//
-//       if (nonceResult == null || nonceResult.nonce.isEmpty) {
-//         debugPrint('Apple Pay was cancelled or failed to produce a nonce.');
-//         emit(PaymentCancelled()); // Or emit PaymentReady again
-//         // Re-emit PaymentReady so UI can recover
-//         await Future.delayed(const Duration(milliseconds: 50));
-//         emit(PaymentReady(braintreeClientToken: _braintreeClientToken, isApplePayAvailable: _isApplePayAvailable));
-//         return;
-//       }
-//
-//       final String braintreeNonce = nonceResult.nonce;
-//       debugPrint('Received Apple Pay Nonce (braintree_flutter_plus): $braintreeNonce');
-//
-//       await _processPaymentNonce(
-//         nonce: braintreeNonce,
-//         stationId: event.stationId,
-//         isApplePay: true,
-//         // deviceData: nonceResult.deviceData, // Check if deviceData is available in this package's result
-//         emit: emit,
-//       );
-//
-//     } on TimeoutException catch (e, s) {
-//       debugPrint('Apple Pay Request TIMED OUT: $e\n$s');
-//       emit(const PaymentError(message: 'Apple Pay process timed out. Please try again.'));
-//     } catch (e, s) {
-//       debugPrint('Error during Apple Pay request: $e\n$s');
-//       emit(PaymentError(message: e.toString()));
-//     }
-//   }
-//
-//   Future<void> _onRequestCardPayment(
-//       RequestCardPayment event,
-//       Emitter<PaymentState> emit,
-//       ) async {
-//     if (_braintreeClientToken.isEmpty) {
-//       emit(const PaymentError(message: 'Braintree client token is missing. Please initialize first.'));
-//       return;
-//     }
-//     emit(const PaymentLoading(message: 'Processing Card Payment...'));
-//     try {
-//       // 1. Create a card request.
-//       // `braintree_flutter_plus` might use `BraintreeCreditCardRequest` or similar.
-//       // This often just involves showing a form and getting the details.
-//       // The actual tokenization usually happens when the form is submitted.
-//       // Or it might be a direct call if you have card details (not recommended for PCI).
-//       //
-//       // Let's assume `braintree_flutter_plus` has a method to show a card form:
-//       // This is a common pattern for such libraries.
-//       // Example: Braintree.showCardForm() or similar.
-//       //
-//       // `braintree_flutter_plus` often uses `Braintree.tokenizeCreditCard`
-//       // after you've collected card details using your own UI or a provided form.
-//       // For simplicity here, let's assume it has a method to pop up a Braintree card form
-//       // similar to how Drop-in works but just for cards.
-//       // If not, you'd build your own card form and use `Braintree.tokenizeCreditCard`.
-//
-//       // A common way with `braintree_flutter_plus` is to use `Braintree.showCreditCardForm`
-//       final BraintreePaymentMethodNonce? nonceResult = await Braintree.showCreditCardForm(
-//         authorization: _braintreeClientToken, // or clientToken:
-//         amount: '4.99',
-//         // You might need to pass a BraintreeCardRequest for 3DS or other options
-//         // request: BraintreeCardRequest( /* ... card details if you have them, or for 3DS setup ... */ )
-//       );
-//
-//       if (nonceResult == null || nonceResult.nonce.isEmpty) {
-//         debugPrint('Card payment was cancelled or failed to produce a nonce.');
-//         emit(PaymentCancelled());
-//         // Re-emit PaymentReady so UI can recover
-//         await Future.delayed(const Duration(milliseconds: 50));
-//         emit(PaymentReady(braintreeClientToken: _braintreeClientToken, isApplePayAvailable: _isApplePayAvailable));
-//         return;
-//       }
-//
-//       final String braintreeNonce = nonceResult.nonce;
-//       debugPrint('Received Card Nonce (braintree_flutter_plus): $braintreeNonce');
-//
-//       await _processPaymentNonce(
-//         nonce: braintreeNonce,
-//         stationId: event.stationId,
-//         isApplePay: false,
-//         deviceData: nonceResult.deviceData,
-//         emit: emit,
-//       );
-//
-//     } on TimeoutException catch (e, s) {
-//       debugPrint('Card Payment Request TIMED OUT: $e\n$s');
-//       emit(const PaymentError(message: 'Card payment process timed out. Please try again.'));
-//     } catch (e, s) {
-//       debugPrint('Error during Card Payment request: $e\n$s');
-//       emit(PaymentError(message: e.toString()));
-//     }
-//   }
-//
-//   // Helper method to process the nonce with your backend
-//   Future<void> _processPaymentNonce({
-//     required String nonce,
-//     required String stationId,
-//     required bool isApplePay,
-//     String? deviceData, // Optional device data
-//     required Emitter<PaymentState> emit,
-//   }) async {
-//     try {
-//       final methodToken = await _service.addPaymentMethod(
-//         accessJwt: _accessJwt,
-//         paymentNonce: nonce,
-//         description: isApplePay ? 'Apple Pay Recharge' : 'Card Recharge',
-//         paymentType: isApplePay ? 'APPLE_PAY' : 'CREDIT_CARD', // Adjust paymentType if needed
-//         // You might want to send deviceData to your backend if your Braintree setup uses it
-//       );
-//
-//       await _service.createSubscription(
-//         accessJwt: _accessJwt,
-//         methodToken: methodToken,
-//         // Potentially add planId from an event or config
-//       );
-//
-//       await _service.rentPowerBank(
-//         accessJwt: _accessJwt,
-//         cabinetId: stationId,
-//         connectionKey: stationId, // Assuming this is correct
-//       );
-//
-//       emit(PaymentSuccess());
-//     } catch (e, s) {
-//       // Catch specific DioErrors if you want to inspect statusCode or response data
-//       debugPrint('Error processing payment nonce with backend: $e\n$s');
-//       emit(PaymentError(message: 'Backend processing failed: ${e.toString()}'));
-//     }
-//   }
-// }
+
+// Define a new event for when a nonce is received from JS
+class ProcessPaymentNonceEvent extends PaymentEvent {
+  final String nonce;
+  final String stationId;
+  final bool isApplePay;
+  final String? deviceData; // Optional
+
+  const ProcessPaymentNonceEvent({
+    required this.nonce,
+    required this.stationId,
+    required this.isApplePay,
+    this.deviceData,
+  });
+
+  @override
+  List<Object?> get props => [nonce, stationId, isApplePay, deviceData];
+}
