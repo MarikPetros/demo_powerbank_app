@@ -1,5 +1,5 @@
 @JS() // Sets the context for JS interop
-library js_interop_manager_library; // Can be any unique name for the JS library context
+library; // Can be any unique name for the JS library context
 
 import 'dart:async';
 import 'package:flutter/foundation.dart' show debugPrint;

@@ -74,7 +74,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is PaymentError && !(state is PaymentReady)) { // Show error if not in a ready state
+          if (state is PaymentError && state is! PaymentReady) { // Show error if not in a ready state
             return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
