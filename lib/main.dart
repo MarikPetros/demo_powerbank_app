@@ -44,6 +44,8 @@ void main() {
   runApp(MyApp(paymentBloc: paymentBloc));
 }
 
+// import 'package:flutter/foundation.dart' show kIsWeb; // Already imported
+
 class MyApp extends StatelessWidget {
   final PaymentBloc paymentBloc;
 
@@ -51,63 +53,81 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // For testing QR flow, use a default stationId
     const String defaultStationId = 'RECH082203000350';
 
     final router = GoRouter(
-      // For a web app, the initialLocation might often be determined by the URL directly.
-      // If the app is always meant to start at a payment flow for this test,
-      // initialLocation could be `/pay?stationId=...`
-      initialLocation: kIsWeb ? Uri.base.toString().replaceFirst(Uri.base.origin, '') : '/pay?stationId=$defaultStationId',
-      // Alternatively, if deep linking / QR scan is properly simulated by directly opening the URL:
-      // initialLocation: Uri.base.toString().contains('stationId=')
-      //     ? Uri.base.toString().replaceFirst(Uri.base.origin, '')
-      //     : '/placeholder-qr', // Fallback if no stationId in URL
+      // Let GoRouter determine the initial location from the browser's URL.
+      // If the URL is just "http://localhost:5555/", initialLocation will be "/".
+      // If "http://localhost:5555/pay?stationId=123", initialLocation will be "/pay?stationId=123".
+      // No need for complex Uri.base manipulation here if your web server serves index.html for all paths.
+      initialLocation: kIsWeb
+          ? Uri.base.toString().replaceFirst(Uri.base.origin, '') // Standard way to get path + query
+          : '/?stationId=$defaultStationId', // For non-web, keep your default behavior
 
       routes: [
-        // Placeholder for QR screen if needed, or if initial URL doesn't have stationId
+        GoRoute(
+          path: '/',
+          redirect: (BuildContext context, GoRouterState state) {
+            // This redirect is for when the user lands on the absolute root "/".
+            // It will decide whether to show a QR placeholder or go to payment screen.
+
+            // Get stationId from the *actual current URL query parameters* if any.
+            // state.uri.queryParameters are the query params for the path being matched ('/')
+            // For the root redirect, we're interested in the browser's actual URL params.
+            final String? stationIdFromBrowserUrl = Uri.base.queryParameters['stationId'];
+
+            if (stationIdFromBrowserUrl != null && stationIdFromBrowserUrl.isNotEmpty) {
+              // If stationId is in the browser URL, redirect to pay screen with it.
+              return '/?stationId=$stationIdFromBrowserUrl';
+            } else {
+              // No stationId in URL, or at root, go to QR placeholder.
+              // This simplifies: if you're at "/" and don't have a stationId in the
+              // URL bar, you see the QR screen.
+              return '/placeholder-qr';
+            }
+            // Note: The previous logic for `stationIdFromUrl == defaultStationId` and
+            // `!Uri.base.queryParameters.containsKey('stationId')` was a bit complex.
+            // This revised logic is more direct: has stationId in URL -> /pay, else -> /placeholder-qr.
+          },
+        ),
         GoRoute(
           path: '/placeholder-qr',
-          builder: (_, __) => const PlaceholderQRScreen(defaultStationId: defaultStationId),
+          builder: (context, state) =>
+          const PlaceholderQRScreen(defaultStationId: defaultStationId),
         ),
         GoRoute(
             path: '/pay',
             builder: (context, state) {
-              // Extract stationId from query parameters.
-              // If directly navigating via URL (simulating QR scan redirect), this will have the value.
+              // Extract stationId from GoRouter's state for this route.
+              // This will have the value if redirected from "/" or if navigated directly.
               String stationId = state.uri.queryParameters['stationId'] ?? defaultStationId;
 
-              // It's generally better for the screen to dispatch an event to the BLoC
-              // to initialize payment with the stationId, rather than PaymentBloc
-              // trying to read Uri.base globally.
+              // If stationId somehow ended up empty or as the default AND we really
+              // expect one from a QR scan, we could add a fallback, but the root redirect handles most cases.
+              if (stationId.isEmpty || (stationId == defaultStationId && !state.uri.queryParameters.containsKey('stationId'))) {
+                // This condition might be redundant if the '/' redirect is robust.
+                // Consider if you really need the defaultStationId here or if it should always come from query.
+                // For now, using it as a fallback.
+                print("Warning: Navigated to /pay without a specific stationId, using default: $defaultStationId");
+              }
               return PaymentScreen(stationId: stationId);
             }),
         GoRoute(
           path: '/success',
-          builder: (_, __) => const SuccessScreen(), // Your existing SuccessScreen
-        ),
-        // Optional: A root redirector if you always want to go to /pay for this test
-        GoRoute(
-          path: '/',
-          redirect: (BuildContext context, GoRouterState state) {
-            String stationIdFromUrl = Uri.base.queryParameters['stationId'] ?? defaultStationId;
-            if (Uri.base.path == '/' && (stationIdFromUrl == defaultStationId && !Uri.base.queryParameters.containsKey('stationId'))) {
-              // If at root and no stationId in URL, maybe go to placeholder or default pay
-              return '/placeholder-qr';
-            } else if (Uri.base.path == '/' && stationIdFromUrl != defaultStationId) {
-              return '/pay?stationId=$stationIdFromUrl';
-            }
-            // If already on /pay or other valid paths, no redirect
-            return null;
-          },
-          // builder: (context, state) => Container(), // Must have builder or redirect
+          builder: (_, __) => const SuccessScreen(),
         ),
       ],
-      // Log router errors for debugging
       onException: (_, GoRouterState state, GoRouter router) {
-        debugPrint('GoRouter Exception: ${state.error}');
-        // router.go('/error'); // Optional: redirect to an error screen
+        // Use debugPrint for Flutter console, console.log for browser JS console
+        debugPrint('GoRouter Exception: Path "${state.uri}" resulted in error: ${state.error}');
+        if (state.error != null) {
+          // Log the full error if possible
+          debugPrint('GoRouter Exception Details: ${state.error.toString()}');
+        }
+        // Redirect to a dedicated error screen or a safe fallback like placeholder-qr
+        // router.go('/placeholder-qr'); // Avoid potential redirect loops to an error page
       },
+      // observers: [ GoRouterObserver() ], // Add for more detailed logging if needed
     );
 
     return BlocProvider.value(
@@ -116,12 +136,23 @@ class MyApp extends StatelessWidget {
         title: 'PowerBank App',
         routerConfig: router,
         theme: ThemeData(
-          fontFamily: 'SF Pro Display', // Ensure this font is available for web
-          // You might want to define primary colors, button themes etc. to match Figma
-          // e.g. primaryColor: Colors.black,
+          fontFamily: 'SF Pro Display',
         ),
         debugShowCheckedModeBanner: false,
       ),
     );
   }
 }
+
+// Optional: A simple observer for debugging
+// class GoRouterObserver extends NavigatorObserver {
+//   @override
+//   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+//     debugPrint('GoRouter: Pushed ${route.settings.name}');
+//   }
+//   @override
+//   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+//     debugPrint('GoRouter: Popped ${route.settings.name}');
+//   }
+//   // ... other overrides
+// }
