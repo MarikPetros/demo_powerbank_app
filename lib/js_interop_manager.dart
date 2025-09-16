@@ -53,7 +53,6 @@ external void _triggerApplePayInJS(String clientToken, String amount, String cur
 @JS('initiateCardPaymentInJS')
 external void _triggerCardPaymentInJS(String clientToken /*, other params like amount if form needs it */);
 
-
 // --- JSInteropManager Class ---
 
 class JSInteropManager {
