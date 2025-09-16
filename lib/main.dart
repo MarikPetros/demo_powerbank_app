@@ -171,11 +171,11 @@ class MyApp extends StatelessWidget {
 class TestApp extends StatelessWidget {
    TestApp({super.key});
 
-  final String?  defaultStationId1=
-  Uri.base.queryParameters['stationId'];
+  // final String?  defaultStationId1=
+  // Uri.base.queryParameters['stationId'];
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: Text('The station $defaultStationId1'));
+    return Center(child: Text('The station ID is: RECH082203000350'));
   }
 }
