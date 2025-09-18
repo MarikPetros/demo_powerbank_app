@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.0.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -36,26 +36,31 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # BLoC + state management
-  flutter_bloc: ^9.1.1
-  equatable: ^2.0.7
+#  flutter_bloc: ^9.1.1
+#  equatable: ^2.0.7
 
   # HTTP client
-  dio: ^5.9.0
+#  dio: ^5.9.0
 
   # Braintree Drop-in & ApplePay (iOS & Android)
   #  flutter_braintree: ^4.0.0
   google_fonts: ^6.3.1
-  go_router: ^16.2.1
+#  go_router: ^16.2.1
   #  js: ^0.7.2
   url_launcher: ^6.3.2
-  js_interop: ^0.0.1
-  web: ^1.1.1
-  pay: ^3.2.1
+#  js_interop: ^0.0.1
+#  web: ^1.1.1
+#  pay: ^3.2.1
 
 
 
-  bloc: any
-  js: ^0.6.7
+#  bloc: any
+  http: ^1.5.0
+  uni_links: ^0.5.1
+  webview_flutter: ^4.13.0
+  flutter_spinkit: ^5.2.2
+  js: ^0.7.2
+#  js: ^0.6.7
 #  braintree_flutter_plus: ^5.0.6
 dev_dependencies:
   flutter_test:
@@ -82,6 +87,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icons/apple_pay_logo.png
+    - assets/icons/cards_icon.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
