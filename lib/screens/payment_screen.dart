@@ -613,7 +613,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     CustomButton(
                       text: 'Debit or Credit Card',
                       iconPath: 'assets/icons/cards_icon.png',
-                      rightIconPath: 'assets/images/right_arrow.png',
+                      rightIconPath: 'assets/icons/right_arrow.png',
                       backgroundColor: Colors.white,
                       textColor: const Color(0xFF0B0B0B),
                       borderColor: Colors.grey[300],
