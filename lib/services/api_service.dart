@@ -10,7 +10,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return AuthResponse.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception('Failed to generate account');
+      throw Exception('Failed to generate account: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -22,7 +22,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return response.body;
     } else {
-      throw Exception('Failed to get Braintree token');
+      throw Exception('Failed to get Braintree token: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -42,7 +42,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return response.body;
     } else {
-      throw Exception('Failed to add payment method');
+      throw Exception('Failed to add payment method: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -59,7 +59,7 @@ class ApiService {
       }),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to create subscription');
+      throw Exception('Failed to create subscription: ${response.statusCode} ${response.body}');
     }
   }
 
@@ -78,21 +78,7 @@ class ApiService {
     if (response.statusCode == 200) {
       return response.body;
     } else {
-      throw Exception('Failed to rent power bank');
-    }
-  }
-
-  Future<Map<String, dynamic>> validateMerchant() async {
-    // Replace with actual endpoint to validate Apple Pay merchant session
-    final response = await http.post(
-      Uri.parse('$baseUrl/auth/apple/validate-merchant'), // Hypothetical endpoint
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'merchantIdentifier': 'merchant.com.marikpetros'}),
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Failed to validate merchant');
+      throw Exception('Failed to rent power bank: ${response.statusCode} ${response.body}');
     }
   }
 }

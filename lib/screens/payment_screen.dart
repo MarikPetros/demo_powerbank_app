@@ -327,23 +327,13 @@
 //   }
 // }
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:powerbank_app/services/api_service.dart';
 import 'package:powerbank_app/screens/success_screen.dart';
 import 'package:powerbank_app/widgets/custom_button.dart';
-import 'package:js/js.dart';
-import 'dart:js' as js;
-
-// JavaScript interop for Apple Pay
-@JS('ApplePaySession')
-external dynamic get ApplePaySession;
-
-@JS()
-external bool canMakePayments();
+import 'package:flutter_braintree/flutter_braintree.dart';
 
 class PaymentScreen extends StatefulWidget {
   final String stationId;
@@ -359,124 +349,124 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _isLoading = false;
   String? _accessToken;
   String? _braintreeToken;
-  bool _showWebView = false;
-  bool _applePayAvailable = false;
-  late WebViewController _webViewController;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _checkApplePayAvailability();
+    print('PaymentScreen initialized with stationId: ${widget.stationId}');
     _initializePayment();
-    _setupWebViewController();
-  }
-
-  void _setupWebViewController() {
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (NavigationRequest request) {
-            if (request.url.contains('payment_success')) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const SuccessScreen()),
-              );
-              return NavigationDecision.prevent;
-            }
-            return NavigationDecision.navigate;
-          },
-        ),
-      );
-  }
-
-  Future<void> _checkApplePayAvailability() async {
-    try {
-      final bool isAvailable = js.context.hasProperty('ApplePaySession') && canMakePayments();
-      setState(() {
-        _applePayAvailable = isAvailable;
-      });
-    } catch (e) {
-      print('Error checking Apple Pay availability: $e');
-      setState(() {
-        _applePayAvailable = false;
-      });
-    }
   }
 
   Future<void> _initializePayment() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      print('Calling /api/v1/auth/apple/generate-account');
       final authResponse = await _apiService.generateAppleAccount();
       setState(() {
         _accessToken = authResponse.accessJwt;
+        print('Access token received: $_accessToken');
       });
+      print('Calling /api/v1/payments/generate-and-save-braintree-client-token');
       final braintreeToken = await _apiService.getBraintreeToken(_accessToken!);
       setState(() {
         _braintreeToken = braintreeToken;
-        _webViewController.loadRequest(Uri.parse(
-            'https://goldfish-app-3lf7u.ondigitalocean.app/payment?token=$_braintreeToken'));
+        print('Braintree token received: $_braintreeToken');
       });
     } catch (e) {
       print('Error initializing payment: $e');
+      setState(() {
+        _errorMessage = 'Failed to initialize payment: $e. Please try again or contact support.';
+      });
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _handleApplePay() async {
-    if (!_applePayAvailable) return;
+  Future<void> _showBraintreeDropIn({required bool requestApplePay}) async {
+    if (_braintreeToken == null) {
+      print('Braintree token not available');
+      setState(() {
+        _errorMessage = 'Payment initialization not complete. Please wait or try again.';
+      });
+      return;
+    }
 
-    setState(() => _isLoading = true);
     try {
-      final paymentRequest = js.JsObject.jsify({
-        'countryCode': 'US',
-        'currencyCode': 'USD',
-        'supportedNetworks': ['visa', 'masterCard', 'amex', 'discover'],
-        'merchantCapabilities': ['supports3DS'],
-        'total': {
-          'label': 'Power Bank Rental',
-          'amount': '4.99',
-        },
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
       });
+      print('Showing Braintree Drop-in UI (Apple Pay: $requestApplePay)');
 
-      final session = js.JsObject(ApplePaySession, [1, paymentRequest]);
+      final request = BraintreeDropInRequest(
+        clientToken: _braintreeToken!,
+        collectDeviceData: true,
+        applePayRequest: requestApplePay
+            ? BraintreeApplePayRequest(
+          currencyCode: 'USD',
+          supportedNetworks: [
+            ApplePaySupportedNetworks.visa,
+            ApplePaySupportedNetworks.masterCard,
+            ApplePaySupportedNetworks.amex,
+            ApplePaySupportedNetworks.discover,
+          ],
+          merchantIdentifier: 'merchant.com.marikpetros', // Replace with actual Merchant ID
+          countryCode: 'US',
+          paymentSummaryItems: [
+            ApplePaySummaryItem(
+              label: 'Power Bank Rental',
+              amount: 4.99,
+              type: _isLoading ? ApplePaySummaryItemType.pending : ApplePaySummaryItemType.final_,
+            ),
+          ], displayName: '',
+        )
+            : null,
+        cardEnabled: !requestApplePay, // Disable card entry for Apple Pay flow
+      );
 
-      session['onvalidatemerchant'] = allowInterop((event) async {
-        try {
-          final merchantSession = await _apiService.validateMerchant();
-          session.callMethod('completeMerchantValidation', [js.JsObject.jsify(merchantSession)]);
-        } catch (e) {
-          session.callMethod('abort', []);
-        }
-      });
-
-      session['onpaymentauthorized'] = allowInterop((event) async {
-        try {
-          final paymentToken = jsonEncode(event['payment']['token']);
-          await _apiService.createSubscription(_accessToken!, paymentToken, 'tss2');
-          await _apiService.rentPowerBank(_accessToken!, widget.stationId, 'connection_key');
-          session.callMethod('completePayment', [js.JsObject.jsify({'status': 0})]);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SuccessScreen()),
-          );
-        } catch (e) {
-          session.callMethod('completePayment', [js.JsObject.jsify({'status': 1})]);
-          print('Apple Pay error: $e');
-        }
-      });
-
-      session.callMethod('begin', []);
+      final result = await BraintreeDropIn.start(request);
+      if (result != null) {
+        print('Braintree nonce: ${result.paymentMethodNonce.nonce}');
+        // Process payment with nonce
+        await _apiService.addPaymentMethod(
+          _accessToken!,
+          result.paymentMethodNonce.nonce,
+          'Power Bank Rental Subscription',
+          requestApplePay ? 'apple_pay' : 'card',
+        );
+        await _apiService.createSubscription(
+          _accessToken!,
+          result.paymentMethodNonce.nonce,
+          'tss2',
+        );
+        await _apiService.rentPowerBank(
+          _accessToken!,
+          widget.stationId,
+          'connection_key', // Replace with actual connection key
+        );
+        print('Navigating to SuccessScreen');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SuccessScreen()),
+        );
+      } else {
+        print('Braintree Drop-in UI cancelled');
+        setState(() {
+          _errorMessage = 'Payment cancelled. Please try again.';
+        });
+      }
     } catch (e) {
-      print('Apple Pay error: $e');
+      print('Braintree payment error: $e');
+      setState(() {
+        _errorMessage = 'Payment failed: $e. Please try again or contact support.';
+      });
     } finally {
       setState(() => _isLoading = false);
     }
-  }
-
-  void _showCardPaymentWebView() {
-    setState(() => _showWebView = true);
   }
 
   @override
@@ -500,9 +490,41 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: SpinKitCircle(color: Colors.blue))
-          : _showWebView
-          ? WebViewWidget(controller: _webViewController)
+          ? const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SpinKitCircle(color: Colors.blue),
+            SizedBox(height: 16),
+            Text(
+              'Loading Payment...',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 16),
+            ),
+          ],
+        ),
+      )
+          : _errorMessage != null
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _errorMessage!,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 16,
+                color: Colors.red,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _initializePayment,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      )
           : SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -571,13 +593,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   children: [
                     // Apple Pay Button
                     ElevatedButton(
-                      onPressed: _applePayAvailable
-                          ? () {
-                        _handleApplePay(); // Synchronous wrapper
-                      }
+                      onPressed: _braintreeToken != null
+                          ? () => _showBraintreeDropIn(requestApplePay: true)
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _applePayAvailable ? Colors.black : Colors.grey,
+                        backgroundColor: _braintreeToken != null ? Colors.black : Colors.grey,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -589,9 +609,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Image.asset(
-                            'assets/icons/apple_pay_logo.png',
+                            'assets/images/apple_pay_icon.png',
                             height: 18.48,
                             width: 48,
+                            errorBuilder: (context, error, stackTrace) {
+                              print('Error loading Apple Pay icon: $error');
+                              return const Icon(Icons.error, color: Colors.red);
+                            },
                           ),
                           const SizedBox(width: 8),
                           const Text(
@@ -612,12 +636,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     // Card Payment Button
                     CustomButton(
                       text: 'Debit or Credit Card',
-                      iconPath: 'assets/icons/cards_icon.png',
-                      rightIconPath: 'assets/icons/right_arrow.png',
+                      iconPath: 'assets/images/card_icon.png',
+                      rightIconPath: 'assets/images/right_arrow.png',
                       backgroundColor: Colors.white,
                       textColor: const Color(0xFF0B0B0B),
                       borderColor: Colors.grey[300],
-                      onPressed: _showCardPaymentWebView,
+                      onPressed: () => _showBraintreeDropIn(requestApplePay: false),
                     ),
                   ],
                 ),
@@ -626,8 +650,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   child: InkWell(
                     onTap: () async {
                       const url = 'https://support.example.com';
+                      print('Opening support link: $url');
                       if (await canLaunchUrl(Uri.parse(url))) {
                         await launchUrl(Uri.parse(url));
+                      } else {
+                        print('Failed to open support link');
                       }
                     },
                     child: const Text(
