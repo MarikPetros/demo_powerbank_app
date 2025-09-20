@@ -328,6 +328,7 @@
 // }
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart'; // Import Cupertino icons
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:powerbank_app/services/api_service.dart';
@@ -341,7 +342,7 @@ class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key, required this.stationId});
 
   @override
-  _PaymentScreenState createState() => _PaymentScreenState();
+  State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
@@ -414,11 +415,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ApplePaySupportedNetworks.amex,
             ApplePaySupportedNetworks.discover,
           ],
-          merchantIdentifier: 'merchant.com.marikpetros', // Replace with actual Merchant ID
+          merchantIdentifier: 'merchant.com.yourcompany.app', // Replace with actual Merchant ID
           countryCode: 'US',
           paymentSummaryItems: [
             ApplePaySummaryItem(
-              label: 'Power Bank Rental',
+              label: 'PowerBank App',
               amount: 4.99,
               type: _isLoading ? ApplePaySummaryItemType.pending : ApplePaySummaryItemType.final_,
             ),
@@ -481,11 +482,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(icon: const Icon(Icons.arrow_back, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.share, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.book, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.copy, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.arrow_forward, color: Color(0xFF0A84FF)), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF0A84FF)), onPressed: () {}),
+            IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Color(0xFF0A84FF)), onPressed: () {}),
+            IconButton(icon: const Icon(CupertinoIcons.share, color: Color(0xFF0A84FF)), onPressed: () {}),
+            IconButton(icon: const Icon(CupertinoIcons.book, color: Color(0xFF0A84FF)), onPressed: () {}),
+            IconButton(icon: const Icon(CupertinoIcons.square_on_square, color: Color(0xFF0A84FF)), onPressed: () {}),
           ],
         ),
       ),
@@ -609,7 +610,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Image.asset(
-                            'assets/images/apple_pay_icon.png',
+                            'assets/icons/apple_pay_logo.png',
                             height: 18.48,
                             width: 48,
                             errorBuilder: (context, error, stackTrace) {
@@ -636,8 +637,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     // Card Payment Button
                     CustomButton(
                       text: 'Debit or Credit Card',
-                      iconPath: 'assets/images/card_icon.png',
-                      rightIconPath: 'assets/images/right_arrow.png',
+                      iconPath: 'assets/icons/cards_icon.png',
+                      rightIconPath: 'assets/icons/right_arrow.png',
                       backgroundColor: Colors.white,
                       textColor: const Color(0xFF0B0B0B),
                       borderColor: Colors.grey[300],

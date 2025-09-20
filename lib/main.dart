@@ -195,7 +195,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Power Bank Rental',
+      title: 'PowerBank App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'Inter',
@@ -209,7 +209,7 @@ class DeepLinkHandler extends StatefulWidget {
   const DeepLinkHandler({super.key});
 
   @override
-  _DeepLinkHandlerState createState() => _DeepLinkHandlerState();
+  State<DeepLinkHandler> createState() => _DeepLinkHandlerState();
 }
 
 class _DeepLinkHandlerState extends State<DeepLinkHandler> {
