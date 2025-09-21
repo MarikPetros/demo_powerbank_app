@@ -1,211 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <base href="/">
+    <!--
+      If you are serving your web app in a path other than the root, change the
+      href value below to reflect the base path you are serving from.
+
+      The path provided below has to start and end with a slash "/" in order for
+      it to work correctly.
+
+      For more details:
+      * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+      This is a placeholder for base href that will be replaced by the value of
+      the `--base-href` argument provided to `flutter build`.
+    -->
+    <base href="$FLUTTER_BASE_HREF">
+
     <meta charset="UTF-8">
     <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-    <meta name="description" content="Power bank rental app.">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="description" content="A new Flutter project.">
+
+    <!-- iOS meta tags & icons -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="powerbank_app_web">
+    <meta name="apple-mobile-web-app-title" content="test_rent">
     <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="favicon.png"/>
-    <title>PowerBank App</title>
+
+    <title>test_rent</title>
     <link rel="manifest" href="manifest.json">
-
-    <!-- Global Error Handler for Promises -->
-<!--    <script>-->
-<!--        window.addEventListener('unhandledrejection', function(event) {-->
-<!--          // Log the error object directly for more details if available-->
-<!--          console.error('JS: UNHANDLED PROMISE REJECTION:', event.reason || event);-->
-<!--        });-->
-<!--        console.log("JS: Global unhandled promise rejection listener added.");-->
-<!--    </script>-->
-
-<!--    <script src="https://js.braintreegateway.com/web/3.102.0/js/client.min.js"></script>-->
-<!--    <script src="https://js.braintreegateway.com/web/3.102.0/js/apple-pay.min.js"></script>-->
-<!--    <script src="https://applepay.cdn-apple.com/jsapi/v1/apple-pay-sdk.js" async></script>-->
-
 </head>
 <body>
-
-<!--<script>-->
-<!--    console.log("JS: Custom script block started.");-->
-
-<!--    // -&#45;&#45; Global Callback Functions (Called by JS, Listened to by Dart) -&#45;&#45;-->
-<!--    window.flutterApplePayAvailabilityCallbackGlobal = function(isAvailable, reason) {-->
-<!--        console.warn("JS: FALLBACK flutterApplePayAvailabilityCallbackGlobal called (should be overwritten by Dart). Available:", isAvailable, "Reason:", reason);-->
-<!--    };-->
-
-<!--    window.flutterPaymentResultHandlerGlobal = function(type, nonce, error) {-->
-<!--        console.warn("JS: FALLBACK flutterPaymentResultHandlerGlobal called (should be overwritten by Dart). Type:", type, "Nonce:", nonce, "Error:", error);-->
-<!--    };-->
-<!--    console.log("JS: Global callback placeholders defined.");-->
-
-
-<!--    // -&#45;&#45; Functions Called by Dart -&#45;&#45;-->
-
-<!--    function checkApplePayAvailabilityJS(clientToken) {-->
-<!--        console.log("JS: checkApplePayAvailabilityJS called. Token Present:", !!clientToken);-->
-<!--        try {-->
-<!--            if (!clientToken) {-->
-<!--                console.error("JS (checkApplePayAvailabilityJS): Client token missing.");-->
-<!--                window.flutterApplePayAvailabilityCallbackGlobal(false, "Client token missing");-->
-<!--                return;-->
-<!--            }-->
-
-<!--            if (window.ApplePaySession && ApplePaySession.canMakePayments()) {-->
-<!--                console.log("JS (checkApplePayAvailabilityJS): ApplePaySession available and canMakePayments is true.");-->
-<!--                braintree.client.create({ authorization: clientToken })-->
-<!--                    .then(function (clientInstance) {-->
-<!--                        console.log("JS (checkApplePayAvailabilityJS): Braintree client.create successful.");-->
-<!--                        return braintree.applePay.create({ client: clientInstance });-->
-<!--                    })-->
-<!--                    .then(function (applePayInstance) {-->
-<!--                        console.log("JS (checkApplePayAvailabilityJS): Braintree applePay.create successful.");-->
-<!--                        return applePayInstance.canMakePaymentsWithActiveCard({ applePayVersion: 3 });-->
-<!--                    })-->
-<!--                    .then(function (canMakePayments) {-->
-<!--                        if (canMakePayments) {-->
-<!--                            console.log("JS (checkApplePayAvailabilityJS): Availability check: Can make payments.");-->
-<!--                            window.flutterApplePayAvailabilityCallbackGlobal(true, null);-->
-<!--                        } else {-->
-<!--                            console.log("JS (checkApplePayAvailabilityJS): Availability check: Cannot make payments with active card.");-->
-<!--                            window.flutterApplePayAvailabilityCallbackGlobal(false, "No active card or Apple Pay not set up on device");-->
-<!--                        }-->
-<!--                    })-->
-<!--                    .catch(function(err) {-->
-<!--                        console.error("JS (checkApplePayAvailabilityJS): Error in Braintree/ApplePay chain", err);-->
-<!--                        window.flutterApplePayAvailabilityCallbackGlobal(false, "Error setting up Apple Pay availability: " + (err.message || err));-->
-<!--                    });-->
-<!--            } else {-->
-<!--                console.log("JS (checkApplePayAvailabilityJS): ApplePaySession not available or canMakePayments is false.");-->
-<!--                window.flutterApplePayAvailabilityCallbackGlobal(false, "Apple Pay not supported by browser/device");-->
-<!--            }-->
-<!--        } catch (e) {-->
-<!--            console.error("JS (checkApplePayAvailabilityJS): Synchronous error caught", e);-->
-<!--            window.flutterApplePayAvailabilityCallbackGlobal(false, "Unexpected error checking Apple Pay: " + (e.message || e));-->
-<!--        }-->
-<!--    }-->
-
-
-<!--    function initiateApplePayFromFlutter(clientToken, amount, currencyCode) {-->
-<!--        console.log("JS: initiateApplePayFromFlutter called. Token Present:", !!clientToken, "Amount:", amount, "Currency:", currencyCode);-->
-<!--        try {-->
-<!--            if (!clientToken || !amount || !currencyCode) {-->
-<!--                let missing = [];-->
-<!--                if (!clientToken) missing.push("clientToken");-->
-<!--                if (!amount) missing.push("amount");-->
-<!--                if (!currencyCode) missing.push("currencyCode");-->
-<!--                const errorMsg = "Missing parameters: " + missing.join(", ");-->
-<!--                console.error("JS (initiateApplePayFromFlutter): " + errorMsg);-->
-<!--                window.flutterPaymentResultHandlerGlobal("applePay", null, errorMsg);-->
-<!--                return;-->
-<!--            }-->
-
-<!--            if (!window.ApplePaySession || !ApplePaySession.canMakePayments()) {-->
-<!--                 console.warn("JS (initiateApplePayFromFlutter): Apple Pay is not available on this browser or device.");-->
-<!--                 window.flutterPaymentResultHandlerGlobal("applePay", null, "Apple Pay not available on this browser/device.");-->
-<!--                 return;-->
-<!--            }-->
-
-<!--            let applePayInstanceGlobal; // To hold applePayInstance for use in session events-->
-
-<!--            braintree.client.create({ authorization: clientToken })-->
-<!--                .then(function(clientInstance) {-->
-<!--                    console.log("JS (initiateApplePayFromFlutter): Braintree client instance created.");-->
-<!--                    return braintree.applePay.create({ client: clientInstance });-->
-<!--                })-->
-<!--                .then(function(applePayInstance) {-->
-<!--                    applePayInstanceGlobal = applePayInstance; // Store for later-->
-<!--                    console.log("JS (initiateApplePayFromFlutter): Braintree applePay instance created.");-->
-
-<!--                    const paymentRequest = {-->
-<!--                        total: {-->
-<!--                            label: 'PowerBank Rental',-->
-<!--                            amount: amount-->
-<!--                        },-->
-<!--                        currencyCode: currencyCode,-->
-<!--                        countryCode: 'US', // Ensure this is correct for your merchant account-->
-<!--                    };-->
-<!--                    console.log("JS (initiateApplePayFromFlutter): Payment request created:", paymentRequest);-->
-
-<!--                    // ApplePaySession constructor can throw if version is wrong or API is unavailable-->
-<!--                    const session = new ApplePaySession(3, applePayInstanceGlobal.createPaymentRequest(paymentRequest));-->
-<!--                    console.log("JS (initiateApplePayFromFlutter): ApplePaySession created.");-->
-
-<!--                    session.onvalidatemerchant = event => {-->
-<!--                        console.log("JS (initiateApplePayFromFlutter): ApplePaySession onvalidatemerchant", event);-->
-<!--                        applePayInstanceGlobal.performValidation({-->
-<!--                            validationURL: event.validationURL,-->
-<!--                            displayName: 'PowerBank App'-->
-<!--                        })-->
-<!--                        .then(merchantSession => {-->
-<!--                            console.log("JS (initiateApplePayFromFlutter): Merchant validation successful.");-->
-<!--                            session.completeMerchantValidation(merchantSession);-->
-<!--                        })-->
-<!--                        .catch(validationErr => {-->
-<!--                            console.error('JS (initiateApplePayFromFlutter): Merchant validation error', validationErr);-->
-<!--                            session.abort();-->
-<!--                            window.flutterPaymentResultHandlerGlobal("applePay", null, "Apple Pay merchant validation error: " + (validationErr.message || validationErr));-->
-<!--                        });-->
-<!--                    };-->
-
-<!--                    session.onpaymentauthorized = event => {-->
-<!--                        console.log("JS (initiateApplePayFromFlutter): ApplePaySession onpaymentauthorized", event);-->
-<!--                        applePayInstanceGlobal.tokenize({ token: event.payment.token })-->
-<!--                            .then(payload => {-->
-<!--                                console.log('JS (initiateApplePayFromFlutter): Tokenization successful, nonce:', payload.nonce);-->
-<!--                                window.flutterPaymentResultHandlerGlobal("applePay", payload.nonce, null);-->
-<!--                                session.completePayment(ApplePaySession.STATUS_SUCCESS);-->
-<!--                            })-->
-<!--                            .catch(tokenizeErr => {-->
-<!--                                console.error('JS (initiateApplePayFromFlutter): Tokenization error', tokenizeErr);-->
-<!--                                session.completePayment(ApplePaySession.STATUS_FAILURE);-->
-<!--                                window.flutterPaymentResultHandlerGlobal("applePay", null, "Apple Pay tokenization error: " + (tokenizeErr.message || tokenizeErr));-->
-<!--                            });-->
-<!--                    };-->
-
-<!--                    session.oncancel = event => {-->
-<!--                        console.log("JS (initiateApplePayFromFlutter): Apple Pay cancelled by user.", event);-->
-<!--                        window.flutterPaymentResultHandlerGlobal("applePay", null, "cancelled");-->
-<!--                    };-->
-
-<!--                    session.begin();-->
-<!--                    console.log("JS (initiateApplePayFromFlutter): ApplePaySession.begin() called.");-->
-<!--                })-->
-<!--                .catch(function(err) {-->
-<!--                    console.error("JS (initiateApplePayFromFlutter): Error in Braintree/ApplePay chain", err);-->
-<!--                    window.flutterPaymentResultHandlerGlobal("applePay", null, "Error setting up Apple Pay session: " + (err.message || err));-->
-<!--                });-->
-<!--        } catch (e) {-->
-<!--            console.error("JS (initiateApplePayFromFlutter): Synchronous error caught", e);-->
-<!--            window.flutterPaymentResultHandlerGlobal("applePay", null, "Unexpected error initiating Apple Pay: " + (e.message || e));-->
-<!--        }-->
-<!--    }-->
-
-<!--    function initiateCardPaymentInJS(clientToken) {-->
-<!--        console.log("JS: initiateCardPaymentInJS called. Token Present:", !!clientToken);-->
-<!--        try {-->
-<!--            // TODO: Implement Braintree Hosted Fields or Drop-in for card payments.-->
-<!--            // Upon getting a nonce or error, call:-->
-<!--            // window.flutterPaymentResultHandlerGlobal("card", "card_nonce_here", null);-->
-<!--            // OR-->
-<!--            // window.flutterPaymentResultHandlerGlobal("card", null, "Card payment error/cancelled");-->
-<!--            console.warn("JS (initiateCardPaymentInJS): Card payment not yet implemented.");-->
-<!--            setTimeout(() => {-->
-<!--                window.flutterPaymentResultHandlerGlobal("card", null, "Card payment not yet implemented in JS");-->
-<!--            }, 500);-->
-<!--        } catch (e) {-->
-<!--            console.error("JS (initiateCardPaymentInJS): Synchronous error caught", e);-->
-<!--             window.flutterPaymentResultHandlerGlobal("card", null, "Error in card payment stub: " + (e.message || e));-->
-<!--        }-->
-<!--    }-->
-<!--    console.log("JS: Custom script block finished defining functions.");-->
-<!--</script>-->
-
-<!-- Flutter main entry point -->
-<script src="flutter.js" defer></script>
+<script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
