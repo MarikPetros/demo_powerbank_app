@@ -477,19 +477,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: BottomAppBar(
-        color: const Color(0xFF2C2C2E),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(Icons.arrow_forward_ios, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(CupertinoIcons.share, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(CupertinoIcons.book, color: Color(0xFF0A84FF)), onPressed: () {}),
-            IconButton(icon: const Icon(CupertinoIcons.square_on_square, color: Color(0xFF0A84FF)), onPressed: () {}),
-          ],
-        ),
-      ),
       body: _isLoading
           ? const Center(
         child: Column(
