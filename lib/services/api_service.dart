@@ -3,10 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:powerbank_app/models/auth_response.dart';
 
 class ApiService {
-  final String baseUrl = 'https://goldfish-app-3lf7u.ondigitalocean.app/api/v1';
+  final String baseUrl = 'https://goldfish-app-3lf7u.ondigitalocean.app';
 
   Future<AuthResponse> generateAppleAccount() async {
-    final response = await http.get(Uri.parse('$baseUrl/auth/apple/generate-account'));
+    final response = await http.get(Uri.parse('$baseUrl/api/v1/auth/apple/generate-account'));
     if (response.statusCode == 200) {
       return AuthResponse.fromJson(jsonDecode(response.body));
     } else {
@@ -16,7 +16,7 @@ class ApiService {
 
   Future<String> getBraintreeToken(String authToken) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/payments/generate-and-save-braintree-client-token'),
+      Uri.parse('$baseUrl/api/v1/payments/generate-and-save-braintree-client-token'),
       headers: {'Authorization': authToken},
     );
     if (response.statusCode == 200) {
@@ -28,7 +28,7 @@ class ApiService {
 
   Future<String> addPaymentMethod(String authToken, String nonce, String description, String paymentType) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/payments/add-payment-method'),
+      Uri.parse('$baseUrl/api/v1/payments/add-payment-method'),
       headers: {
         'Authorization': authToken,
         'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ class ApiService {
 
   Future<void> createSubscription(String authToken, String paymentToken, String planId) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/payments/subscription/create-subscription-transaction-v2?disableWelcomeDiscount=false&welcomeDiscount=10'),
+      Uri.parse('$baseUrl/api/v1/payments/subscription/create-subscription-transaction-v2?disableWelcomeDiscount=false&welcomeDiscount=10'),
       headers: {
         'Authorization': authToken,
         'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ class ApiService {
 
   Future<String> rentPowerBank(String authToken, String cabinetId, String connectionKey) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/payments/rent-power-bank'),
+      Uri.parse('$baseUrl/api/v1/payments/rent-power-bank'),
       headers: {
         'Authorization': authToken,
         'Content-Type': 'application/json',
