@@ -85,7 +85,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ApplePaySupportedNetworks.amex,
             ApplePaySupportedNetworks.discover,
           ],
-          merchantIdentifier: 'merchant.com.yourcompany.app', // Replace with actual Merchant ID
+          merchantIdentifier: 'merchant.com.company.app', // Replace with actual Merchant ID
           countryCode: 'US',
           paymentSummaryItems: [
             ApplePaySummaryItem(
